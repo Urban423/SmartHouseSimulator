@@ -1,0 +1,15 @@
+requirements:
+	windows:
+		1) clang++ / g++
+	android:
+		1) clang++ (requires visual studio c++ tools)
+		2) SDK
+		3) JNI (native c++)
+		4) JDK (java)
+	linux:
+		1) clang++ / g++
+	IOS:
+		1) clang++
+
+
+to compile application start makefile in root folder

@@ -1,0 +1,22 @@
+#include "VertexDictionary.h"
+
+template<class T>
+VertexDictionary<T>::VertexDictionary(int size)
+{
+	_size = size;
+	nmber_of_elements = 0;
+	array = new T*[size];
+	used_size 	= new int[_size];
+	size_array 	= new int[_size];
+	memset(used_size,  0, _size * sizeof(int));
+	for(int i = 0; i < _size; i++) {
+		array[i] = new T[5];
+		size_array[i] = 5;
+	}
+}
+
+template<class T>
+VertexDictionary<T>::~VertexDictionary()
+{
+
+}

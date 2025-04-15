@@ -1,0 +1,36 @@
+{
+	"version": 3,
+	"cmakeMinimumRequired": {
+		"major": 3,
+		"minor": 14,
+		"patch": 0
+	},
+	"configurePresets": [ {
+		"name": "default",
+		"generator": "Ninja",
+		"binaryDir": "${sourceDir}/.CMakeFiles",
+		"cacheVariables": {
+			"CMAKE_C_COMPILER": "gcc",
+			"CMAKE_CXX_COMPILER": "g++",
+
+
+			"CMAKE_PROJECT_NAME": "SmartHouseSimulator",
+			"CMAKE_PROGRAM_NAME": "SmartHouseSimulator",
+			"PROGRAM_INPUT_DATA": "",
+			"PROGRAM_VERSION"	: "1.0",
+
+			"ENABLE_VERSIONING_BUILD": "OFF",
+			"PATH_TO_MAIN": "MAIN/WINDOWS/main.cpp",
+			"NUM_LIBRARIES": "6",
+			"LIBRARY_0": "Math",
+			"LIBRARY_1": "ImageEditor",
+			"LIBRARY_2": "IOSystem",
+			"LIBRARY_3": "GraphicsEngine",
+			"LIBRARY_4": "Logic",
+			"LIBRARY_5": "App",
+			
+			"EXCLUDED_DIRS": "Android",
+			"RENDERTYPE": "glad"
+		}
+	} ]
+}
