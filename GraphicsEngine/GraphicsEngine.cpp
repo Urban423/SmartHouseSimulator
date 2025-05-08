@@ -9,6 +9,8 @@ bool GraphicsEngine::init()
 #ifdef glad
 	gladLoadGL();
 #endif
+	glEnable(GL_BLEND);
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	glEnable(GL_DEPTH_TEST);
 	glDepthMask(GL_TRUE);
 	glDepthFunc(GL_LESS);
@@ -137,12 +139,7 @@ Shader* GraphicsEngine::createShaderProgram(const ShaderDesc& desc)
 	return m;
 }
 
-IndexArrayObject* GraphicsEngine::createIndexArrayObject(const IndexArrayDesc& desc)
-{
-	IndexArrayObject* m = (IndexArrayObject*)malloc(sizeof(IndexArrayObject));
-	m->init(desc);
-	return m;
-}
+IndexArrayObject* GraphicsEngine::createIndexArrayObject(const IndexArrayDesc& desc) { return new IndexArrayObject(desc); }
 
 Texture* GraphicsEngine::createTexture(const TextureStruct desc)
 {

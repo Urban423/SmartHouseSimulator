@@ -18,8 +18,9 @@ public:
 	}
 	
 	inline void deleteComponent(int objectID) {
-		if(objectID >= objectsInfo.size()) { return; }
+		if(objectID >= objectsInfo.size()) {  return; }
 		std::pair<int, int> index = objectsInfo[objectID]; 
+		if(index.first == -1) { return; }
 		int group = index.first;
 		int removedIndex = index.second;
 		int lastIndex = groupCounters[group] - 1;
@@ -41,13 +42,13 @@ public:
 	}
 
 	template<class T>
-	inline T& addComponent(const T example, int objectID, int group) {
+	inline T& addComponent(const T& example, int objectID, int group) {
 		if (data.size() <= group) {
 			data.resize(group + 1);
 			groupCounters.resize(group + 1, 0);
 		}
 		if (objectsInfo.size() <= objectID) {
-			objectsInfo.resize(objectID + 1);
+			objectsInfo.resize(objectID + 1, {-1, -1});
 		}
 
 		int index = groupCounters[group]++;
@@ -57,8 +58,10 @@ public:
 		if (data[group].size() < offset + sizeof(T))
 			data[group].resize(offset + sizeof(T));
 			
-		T* ptr = (T*)&data[group][offset];
-		std::memcpy(&data[group][offset], &example, sizeof(T));
+		//T* ptr = (T*)&data[group][offset];
+		//T copy = example;
+		//std::memcpy(&data[group][offset], &copy, sizeof(T));
+		T* ptr = new (&data[group][offset]) T(std::move(example));
 		T& cte = *ptr;
 		return getComponent<T>(objectID);
 	}
@@ -68,7 +71,15 @@ public:
 		if (group >= data.size()) return { nullptr, 0 };
 		return { reinterpret_cast<T*>(&data[group][0]), groupCounters[group] };
 	}
-
+	
+	
+	template<class T>
+	inline bool hasComponent(int objectID) {
+		if(objectID >= objectsInfo.size()) {  return false ; }
+		std::pair<int, int> index = objectsInfo[objectID]; 
+		if(index.first == -1) { return false; }
+		return true;
+	}
 private:
 	std::vector<std::pair<int, int>> 	objectsInfo;
 	std::vector<std::vector<char>> 		data;
@@ -124,6 +135,13 @@ public:
 	}
 	
 	template<class T>
+	inline static bool HasComponent(int id) {
+		int componentID =  ecs->getComponentID<T>();
+		if(ecs->componentManagers.size() <= componentID) { return false; }
+		return ecs->componentManagers[componentID].hasComponent<T>(id);
+	}
+	
+	template<class T>
 	inline static std::pair<T*, int> GetComponents(int group = 0) {
 		int componentID =  ecs->getComponentID<T>();
 		if(ecs->componentManagers.size() <= componentID) { return {nullptr, 0}; }
@@ -151,5 +169,6 @@ private:
 
 
 
-template<class T> inline T& Object::AddComponent(int group) { T t{*this, true};  return ECS::addComponentToSystem<T>(t, id, group); };
-template<class T> inline T& Object::GetComponent() 			{   return ECS::GetComponent<T>(id); };
+template<class T> inline 	T& 		Object::AddComponent(int group) { T t{*this, true};  return ECS::addComponentToSystem<T>(t, id, group); };
+template<class T> inline 	T& 		Object::GetComponent() 			{   return ECS::GetComponent<T>(id); };
+template<class T> inline	bool 	Object::HasComponent()			{ 	return ECS::HasComponent<T>(id); }

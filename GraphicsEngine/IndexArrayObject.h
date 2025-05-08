@@ -1,7 +1,6 @@
 #pragma once
 
-struct IndexArrayDesc
-{
+struct IndexArrayDesc {
 	unsigned int* indices = nullptr;
 	unsigned int  size = 0;
 	unsigned int  number_of_materials = 0;
@@ -14,11 +13,10 @@ class IndexArrayObject
 public:
 	IndexArrayObject(const IndexArrayDesc& desc);
 	void init(const IndexArrayDesc& desc);
-	//~IndexArrayObject();
 	
-	unsigned int getNumberOfMaterials();
-	unsigned int getMaterialSize(unsigned int index);
-	unsigned int getID();
+	inline unsigned int getNumberOfMaterials() 				{ return number_of_materials; }
+	inline unsigned int getMaterialSize(unsigned int index) { return material_sizes[index]; } 
+	inline unsigned int getID() 							{ return indexBufferID; }
 private:
 	unsigned int  indexBufferID;
 	unsigned int  size;

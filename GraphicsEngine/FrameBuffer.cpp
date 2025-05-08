@@ -1,34 +1,50 @@
-#include "VertexArrayObject.h"
-#include <malloc.h>
-#include "Vector3.h"
+#include "FrameBuffer.h"
 #include "GraphicConfig.h"
 
-VertexArrayObject::VertexArrayObject(const VertexBufferDesc& desc)
-{
-	init(desc);
+void FrameBuffer::init() {
+	glGenFramebuffers(1, &fbo);
+	glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+	
+	
+	glGenTextures(1, &colorTexture);
+	glBindTexture(GL_TEXTURE_2D, colorTexture);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	
+	
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, colorTexture, 0);
+	if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) { }
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 
-void VertexArrayObject::init(const VertexBufferDesc& desc)
-{
-	glGenBuffers(1, &vertexBufferID);
-    glBindBuffer(GL_ARRAY_BUFFER, vertexBufferID);
-    glBufferData(GL_ARRAY_BUFFER, desc.vertexSize * desc.listSize, desc.verticlesList, GL_STATIC_DRAW);
-
-    // Here, no need to set vertex attribute pointers yet.
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
+void FrameBuffer::destroy() {
+	if (colorTexture != 0) {
+		glDeleteTextures(1, &colorTexture);
+		colorTexture = 0;
+	}
+	if (fbo != 0) {
+		glDeleteFramebuffers(1, &fbo);
+		fbo = 0;
+	}
 }
 
-VertexArrayObject::~VertexArrayObject()
-{
-
+void FrameBuffer::bind() {
+	glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+	glViewport(0, 0, width, height);
 }
 
-unsigned int VertexArrayObject::getID()
-{
-	return vertexBufferID;
+void FrameBuffer::unbind() {
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 
-unsigned int VertexArrayObject::getVertexSize()
-{
-	return vertexBufferData.vertexSize;
+void FrameBuffer::resize(int newWidth, int newHeight) {
+	if (width == newWidth && height == newHeight) return;
+	
+	width = newWidth;
+	height = newHeight;
+	destroy();
+	init();
 }

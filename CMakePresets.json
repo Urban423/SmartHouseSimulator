@@ -21,13 +21,14 @@
 
 			"ENABLE_VERSIONING_BUILD": "OFF",
 			"PATH_TO_MAIN": "MAIN/WINDOWS/main.cpp",
-			"NUM_LIBRARIES": "6",
+			"NUM_LIBRARIES": "7",
 			"LIBRARY_0": "Math",
-			"LIBRARY_1": "ImageEditor",
-			"LIBRARY_2": "IOSystem",
-			"LIBRARY_3": "GraphicsEngine",
-			"LIBRARY_4": "Logic",
-			"LIBRARY_5": "App",
+			"LIBRARY_1": "Algorithms",
+			"LIBRARY_2": "ImageEditor",
+			"LIBRARY_3": "IOSystem",
+			"LIBRARY_4": "GraphicsEngine",
+			"LIBRARY_5": "Logic",
+			"LIBRARY_6": "App",
 			
 			"EXCLUDED_DIRS": "Android",
 			"RENDERTYPE": "glad"

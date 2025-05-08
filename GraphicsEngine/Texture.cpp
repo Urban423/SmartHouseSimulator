@@ -25,8 +25,6 @@ void Texture::init(const TextureStruct desc)
 	delete[] desc.pixels;
 }
 
-//Texture::~Texture() {}
-
 
 
 unsigned int Texture::getID()

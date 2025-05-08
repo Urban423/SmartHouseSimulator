@@ -71,7 +71,7 @@ public:
 	inline static _Input&  getInputInstance()  { return input; };
 	inline static _Window& getOutputInstance() { return window; };
 	
-	static Mesh readFBX(const char* filename);
+	static std::vector<Mesh> readFBX(const char* filename);
 	static TextureStruct readBMP(const char* filename);
 private:
 	static _Input input;

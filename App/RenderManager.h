@@ -12,6 +12,7 @@ private:
 	void init();
 	void Render();
 	void calculateCameraView(const Transform& camera, Camera& cameraData);
+	void renderCamera(Camera& camera);
 private:
 	static RenderManager* renderManager;
 	

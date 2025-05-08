@@ -9,14 +9,11 @@ class Vector3
 public:
 	inline Vector3(): x(0), y(0), z(0) {};
 	inline Vector3(const Vector3& vec3): x(vec3.x), y(vec3.y), z(vec3.z) {};
+	inline Vector3(const Vector2& vec2): x(vec2.x), y(vec2.y), z(0) {};
 	inline Vector3(float x, float y, float z): x(x), y(y), z(z) {};
 	
 	float length();
-	
-	inline float sqrMagnitude()
-	{
-		return x * x + y * y + z * z;
-	}
+	inline float sqrMagnitude() { return x * x + y * y + z * z; }
 	
 	inline Vector3 normalized()
 	{
@@ -28,11 +25,7 @@ public:
 	}
 public:
 	static float Distance(Vector3 a, Vector3 b);
-	static inline float SqrDistance(Vector3 a, const Vector3& b)
-	{
-		a -= b;
-		return a.x * a.x + a.y * a.y + a.z * a.z; 
-	}
+	static inline float SqrDistance(Vector3 a, const Vector3& b) { a -= b; return a.x * a.x + a.y * a.y + a.z * a.z; }
 	static Vector3 Cross(Vector3 a, Vector3 b);
 public:
 	Vector3 operator*(const float b);
@@ -59,6 +52,8 @@ public:
 	
 	Vector3 operator+(const Vector3 vec3);
 	Vector3 operator-(const Vector3& vec3);
+	inline bool operator==(const Vector3 vec3) { return x == vec3.x && y == vec3.y && z == vec3.z; }
+	inline bool operator!=(const Vector3 vec3) { return x != vec3.x || y != vec3.y || z != vec3.z; }
 	
 	inline void operator+=(const Vector3 vec3)
 	{

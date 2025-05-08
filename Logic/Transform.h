@@ -5,6 +5,7 @@
 #include "Color.h"
 #include <vector>
 #include <cstring>
+#include <functional>
 
 class Transform;
 
@@ -22,8 +23,9 @@ public:
 		return *this;
 	}
 	
-	template<class T> T& AddComponent(int group = 0);
-	template<class T> T& GetComponent();
+	template<class T> T& 	AddComponent(int group = 0);
+	template<class T> T& 	GetComponent();
+	template<class T> bool 	HasComponent();
 public:
 	Transform& transform;
 private:
@@ -58,8 +60,14 @@ struct Transform {
 };
 
 struct RenderView: public Component  {
-	int mesh_index = 2;
-	int shader_index = 2;
-	int texture_index = 0;
-	Color color = Color(1, 1, 0, 1);
+	std::vector<int> shader_indexes  = { 0 };
+	std::vector<int> texture_indexes = { 0 };
+	Color color = Color(1, 1, 1, 1);
+	int mesh_index = 0;
+};
+
+struct Button: public Component  {
+	std::function<void()> onMouseDown;
+	std::function<void()> onMouseUp;
+	bool pressed = false;
 };
