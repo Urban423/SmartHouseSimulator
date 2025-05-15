@@ -1,7 +1,7 @@
 #include "NavMeshSystem.h"
 #include "Random.h"
 #include "ECS.h"
-#include "Time.h"
+#include "Timer.h"
 
 NavMeshSystem* NavMeshSystem::navMeshSystem = new NavMeshSystem();
 

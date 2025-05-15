@@ -72,6 +72,7 @@ public:
 		return { reinterpret_cast<T*>(&data[group][0]), groupCounters[group] };
 	}
 	
+	inline int getComponentsGroupsSize() { return data.size(); }
 	
 	template<class T>
 	inline bool hasComponent(int objectID) {
@@ -146,6 +147,13 @@ public:
 		int componentID =  ecs->getComponentID<T>();
 		if(ecs->componentManagers.size() <= componentID) { return {nullptr, 0}; }
 		return ecs->componentManagers[componentID].getPtr<T>(group);
+	}
+	
+	template<class T>
+	inline static int GetComponentGroupSize() {
+		int componentID =  ecs->getComponentID<T>();
+		if(ecs->componentManagers.size() <= componentID) { return 0; }
+		return ecs->componentManagers[componentID].getComponentsGroupsSize();
 	}
 private:
 	static ECS* ecs;

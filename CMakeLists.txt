@@ -105,9 +105,9 @@ add_library(glad STATIC IMPORTED)
 set_target_properties(glad PROPERTIES IMPORTED_LOCATION "${CMAKE_SOURCE_DIR}/libs/libglad.a")
 set_target_properties(glad PROPERTIES INTERFACE_INCLUDE_DIRECTORIES "${CMAKE_SOURCE_DIR}/libs/include")
 list(APPEND LINK_LIBS glad gdi32 opengl32 z)
+set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static-libgcc -static-libstdc++")
 add_compile_definitions(glad)
-add_compile_definitions(windows)
-
+add_compile_definitions(windowsOS)
 
 
 

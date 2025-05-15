@@ -49,7 +49,7 @@ struct VertexWithoutNormal
 	#include "AndroidFileManager.h"
 	#define _Window AndroidFilter 
 	#define _Input AndroidInputManager
-#elif windows
+#elif windowsOS
 	#include "Window.h"
 	#include "KeyBoard.h"
 	#define _Window Window 

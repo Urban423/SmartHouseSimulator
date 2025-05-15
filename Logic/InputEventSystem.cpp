@@ -5,19 +5,21 @@
 #include <stdio.h>
 
 void InputEventSystem::setSize(int width, int height) {
-	std::pair<Camera*, int> s1 = ECS::GetComponents<Camera>(0);
-	Camera* camera = s1.first;
-	for(int cameraIndex = 0; cameraIndex < s1.second; cameraIndex++) {
-		Camera& camData = camera[cameraIndex];
-		camData.left = 0;
-		camData.right = width;
-		camData.top = 0;
-		camData.bottom = height;
-		camData.projection.setIdentity();
-		camData.projection.setOrthoLH((float)width * camData.focalLength, (float)height * camData.focalLength, -4, 4);
-		//camData.projection.setPerspectiveFovLH(1.17f, size.x / size.y, 0.01f, 1111);
+	int groupCounter = ECS::GetComponentGroupSize<Camera>();
+	for(int i = groupCounter - 1; i >= 0; i--) {
+		std::pair<Camera*, int> s1 = ECS::GetComponents<Camera>(i);
+		Camera* camera = s1.first;
+		for(int cameraIndex = 0; cameraIndex < s1.second; cameraIndex++) {
+			Camera& camData = camera[cameraIndex];
+			camData.left = 0;
+			camData.right = width;
+			camData.top = 0;
+			camData.bottom = height;
+			camData.projection.setIdentity();
+			camData.projection.setOrthoLH((float)width * camData.focalLength, (float)height * camData.focalLength, -4, 4);
+			//camData.projection.setPerspectiveFovLH(1.17f, size.x / size.y, 0.01f, 1111);
+		}
 	}
-	//renderManager->Render();
 }
 
 bool checkCollision(Vector3 center, Vector3 scale, Vector3 pos) {
@@ -56,7 +58,7 @@ void InputEventSystem::handleMouseClickUp(float x, float y) {
 
 void InputEventSystem::handleMouseWheel(char delta) {
 	if(delta != 120 && delta != -120) { return; }
-	auto[cameraControlSystems, size] = ECS::GetComponents<CameraControlSystem>(0);
+	auto[cameraControlSystems, size] = ECS::GetComponents<CameraControlSystem>();
 	for(int i = 0 ; i < size; i++) {
 		cameraControlSystems[i].ChangeDist(delta);
 	}

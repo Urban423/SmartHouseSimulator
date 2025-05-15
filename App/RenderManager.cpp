@@ -33,7 +33,7 @@ void RenderManager::init() {
 		"Tile1.bmp",
 		"Floortex.bmp",
 		"Grass.bmp",
-		"Ghost1.bmp",
+		"Ghost.bmp",
 	};
 	for(int i = 0; i < sizeof(textureFiles) / sizeof(const char*); i++) {
 		TextureStruct assa  = IOSystem::readBMP(textureFiles[i]);
@@ -78,9 +78,15 @@ void RenderManager::init() {
 }
 
 
-void RenderManager::renderCamera(Camera& camera) {
+void RenderManager::renderCamera(Camera& camera, int renderViewIndex) {
 	calculateCameraView(camera.object.transform, camera);
 	
+	if(renderViewIndex == 0) {
+		
+	}
+	else {
+		
+	}
 	
 	GraphicsEngine::setViewPort(camera.left, camera.top, camera.right, camera.bottom);
 	// GraphicsEngine::clearDepthBuffer();
@@ -91,7 +97,7 @@ void RenderManager::renderCamera(Camera& camera) {
 	//GraphicsEngine::clearDepthBuffer();
 	GraphicsEngine::clearColorDepthBuffer();
 	
-	std::pair<RenderView*, int> s = ECS::GetComponents<RenderView>(camera.RenderViewDataIndex);
+	std::pair<RenderView*, int> s = ECS::GetComponents<RenderView>(renderViewIndex);
 	RenderView* renderView = s.first;
 	for(int i = s.second - 1; i > -1; i--) {
 		if(renderView[i].enabled == false) { continue; }
@@ -133,8 +139,12 @@ void RenderManager::renderCamera(Camera& camera) {
 
 void RenderManager::Render() { 
 	GraphicsEngine::disable3D();
-	auto[cameras, size] = ECS::GetComponents<Camera>(0);
-	for(int i = 0; i < size; i++) {
-		renderCamera(cameras[i]);
+	int groupCounter = ECS::GetComponentGroupSize<Camera>();
+	for(int i = groupCounter - 1; i >= 0; i--) {
+		auto[cameras, size] = ECS::GetComponents<Camera>(i);
+		for(int j = 0; j < size; j++) {
+			renderCamera(cameras[j], i);
+		}
+		break;
 	}
 }

@@ -1,6 +1,7 @@
 #pragma once
 #include "Polygon.h"
-#include "Graph.h"
+#include "Transform.h"
+//#include "Graph.h"
 
 
 #define PathInComplete 	0
@@ -16,7 +17,7 @@ public:
 private:
 	static NavMeshSystem* navMeshSystem;
 	Shapes::Polygon base;
-	MatrixGraph<float> graph;
+	//MatrixGraph<float> graph;
 };
 
 

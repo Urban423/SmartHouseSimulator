@@ -1,6 +1,7 @@
 #include "IOSystem.h"
 #include <Polygon.h>
 #include "VertexDictionary.h"
+#include <cstdio>
 
 Mesh createMeshWithIndexNormals(
 	int* indicies_array, int number_of_indicies,
@@ -73,6 +74,7 @@ Mesh createMeshWithIndexNormals(
 		memset(removed_vertexes, 0, number_of_points);
 		
 		
+		Vector3 helpNormal = byVertex? normals[normal_indexes[indicies_array[first]]] : normals[normal_indexes[first]];
 		for(int j = first; j < i; j++) {
 			if(j == helping_indicies[j]) {
 				if(byVertex) {
@@ -88,10 +90,9 @@ Mesh createMeshWithIndexNormals(
 			}
 		}
 		
-		if(number_of_used_materials > 1) { real_first = startMaterialPointers[*material_indexes_copy]; startMaterialPointers[*material_indexes_copy] += number_of_points * 3 - 6; ++material_indexes_copy; };
-		TriangulatePolygon(result_vertexes, normals[i - 1], vector_array, removed_vertexes, indicies_array + first, number_of_points, result_indices + real_first);
-		
-		
+		if(number_of_used_materials > 1) { real_first = startMaterialPointers[*material_indexes_copy]; startMaterialPointers[*material_indexes_copy] += number_of_points * 3 - 6; ++material_indexes_copy; };	
+		TriangulatePolygon(result_vertexes, helpNormal, vector_array, removed_vertexes, indicies_array + first, number_of_points, result_indices + real_first);
+	
 		real_first += number_of_points * 3 - 6; 
 		first = i;
 	}
