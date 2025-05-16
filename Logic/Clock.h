@@ -2,7 +2,7 @@
 
 #include "Transform.h"
 
-class Thermometer : public Component {
+class Clock : public Component {
 public:
 
     void update();

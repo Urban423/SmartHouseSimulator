@@ -4,7 +4,11 @@
 #include <algorithm>
 #include "ECS.h"
 
-//ScreenLogic::ScreenLogic(): rects(std::vector<Rect>(1, {0, 0, 1, 1})) {}
+void createObjectCopy(Vector3 newPos, Vector3 newScale, Object original) {
+	Object copy = ECS::createObject();
+	copy.transform = {newPos, Quaternion(0, 0, 0, 1), newScale};
+	copy.AddComponent<RenderView>(0).shader_indexes[0] = original.GetComponent<RenderView>().shader_indexes[0];
+}
 
 bool areNeighbors(int& axis, Vector3 posA, Vector3 scaleA, Vector3 posB, Vector3 scaleB) {
 	Vector2 box1_min = Vector2(posA.x - scaleA.x, posA.y - scaleA.y);
@@ -173,9 +177,7 @@ void ScreenLogic::update() {
 				newScale[axis] 		= (collisionData.pointsAxis[zoneIndex2 + 1] - collisionData.pointsAxis[zoneIndex2]) / 2;
 				newScale[!axis] 	= zones[holeIndex2] / 2;
 				
-				Object copy = ECS::createObject();
-				copy.transform = {newPos, Quaternion(0, 0, 0, 1), newScale};
-				copy.AddComponent<RenderView>(0);// = rectangle.GetComponent<RenderView>();
+				createObjectCopy(newPos, newScale, rectangle);
 			}
 			
 			int holeIndex1 = !(holes & 0x1);
@@ -195,9 +197,7 @@ void ScreenLogic::update() {
 			rectangle.transform.position =  (controlPanelRender.transform.position + pointEdge1) / 2;
 			rectangle.transform.scale 	=  controlPanelRender.transform.scale * Vector3(!axis, axis, 0) + Vector3::Distance(pointEdge1, rectangle.transform.position) * Vector3(axis, !axis, 0);
 			
-			Object copy = ECS::createObject();
-			copy.transform = {newPos, Quaternion(0, 0, 0, 1), newScale};
-			copy.AddComponent<RenderView>(0);// = rectangle.GetComponent<RenderView>();
+			createObjectCopy(newPos, newScale, rectangle);
 		}
 		controlPanelRender.GetComponent<RenderView>().enabled = false;
 		mouseState = MouseOnFrame;
@@ -229,9 +229,7 @@ void ScreenLogic::split(Vector3 position, Vector3 scale) {
 	rectangle.transform.position =  (position + pointEdge1) / 2;
 	rectangle.transform.scale 	=  scale * Vector3(!axis, axis, 0) + Vector3::Distance(pointEdge1, rectangle.transform.position) * Vector3(axis, !axis, 0);
 	
-	Object copy = ECS::createObject();
-	copy.transform = {newPos, Quaternion(0, 0, 0, 1), newScale};
-	copy.AddComponent<RenderView>(0);// = rectangle.GetComponent<RenderView>();
+	createObjectCopy(newPos, newScale, rectangle);
 }
 
 bool checkAxis( const Transform& transform, const Vector2& center, int axis) {

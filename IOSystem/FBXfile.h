@@ -46,8 +46,10 @@ public:
 	unsigned char* readArray(int& ArrayLength, int typeSize, CFile& file);
 	AllProps getProperties(char type, CFile& file);
 	int readFBXNode(CFile& file, int offset, Node* parent);
-	Node* findChildrenByName(const char* name, Node* node);
-	Node* getRoot();
+	
+	static std::vector<Node*> 	findChildrenByName(const char* name, Node* node);
+	static Node* 				findChildByName(const char* name, Node* node);
+	inline Node* 				getRoot() { return &root; }
 private:
 	Node root;
 };

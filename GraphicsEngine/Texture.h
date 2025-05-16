@@ -4,9 +4,8 @@
 class Texture
 {
 public:
-	Texture(const TextureStruct desc);
+	Texture(const TextureStruct desc) { init(desc); }
 	void init(const TextureStruct desc);
-	//~Texture();
 	
 	unsigned int getID();
 public:

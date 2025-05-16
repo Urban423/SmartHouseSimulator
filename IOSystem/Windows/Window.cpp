@@ -19,23 +19,30 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
 			}		
 			break;
 		}
+		case WM_SIZE: { 
+		if (wParam == SIZE_RESTORED || wParam == SIZE_MAXIMIZED) {
+				win->setSize();
+			}	
+			break; 
+		};
 		case WM_GETMINMAXINFO: {
             MINMAXINFO* pMinMax = (MINMAXINFO*)lParam;
             pMinMax->ptMinTrackSize.x = 400;
             pMinMax->ptMinTrackSize.y = 300;
             return 0;
         }
-		case WM_SIZING: { break; };
 		case WM_LBUTTONDOWN: {
-			int x = (int)(short)LOWORD(lParam);
-			int y = (int)(short)HIWORD(lParam);
-			if (win->getIES()) win->getIES()->handleMouseClickDown((float)x, (float)y);
+			Rect r = win->getInnerSize();
+			float x = (2 * (float)(short)LOWORD(lParam) / r.width()  ) - 1;
+			float y = (-2 * (float)(short)HIWORD(lParam) / r.height()) + 1;
+			if (win->getIES()) win->getIES()->handleMouseClickDown(x, y);
 			break;
 		}
 		case WM_LBUTTONUP: {
-			int x = (int)(short)LOWORD(lParam);
-			int y = (int)(short)HIWORD(lParam);
-			if (win->getIES()) win->getIES()->handleMouseClickUp((float)x, (float)y);
+			Rect r = win->getInnerSize();
+			float x = (2 * (float)(short)LOWORD(lParam) / r.width()  ) - 1;
+			float y = (-2 * (float)(short)HIWORD(lParam) / r.height()) + 1;
+			if (win->getIES()) win->getIES()->handleMouseClickUp(x, y);
 			break;
 		}
 		case WM_ERASEBKGND: return 1;
@@ -126,13 +133,8 @@ void Window::init(const char* windowName, int width, int height, bool fullscreen
 	centerY = rect.top  +  rect.height() / 2;
 }
 
-void Window::setRenderContextNULL() {
-	wglMakeCurrent(NULL, NULL);
-}
-
-void Window::setRenderContext() { 
-	wglMakeCurrent(hDC, hRC);
-}
+void Window::setRenderContextNULL() { wglMakeCurrent(NULL, NULL); }
+void Window::setRenderContext() {  wglMakeCurrent(hDC, hRC); }
 
 void Window::handleInput() {
 	MSG msg;

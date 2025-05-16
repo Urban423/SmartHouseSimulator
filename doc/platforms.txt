@@ -1,1 +1,0 @@
-UrbanEngine supports android, windows

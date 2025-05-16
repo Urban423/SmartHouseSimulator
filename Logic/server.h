@@ -1,27 +1,22 @@
 #pragma once
-#include <string>
+#include "Transform.h"
+#include "ECS.h"
 
-class Server {
+class Server : public Component {
 public:
 
-    void addMotionSensor(std::string name);
+    void addLamp();
 
-    void addLamp(std::string name);
+    void addThermometr();
 
-    void addWatch(std::string name);
+    void addClock();
 
-    void addThermometer(std::string name);
+    void addMotionSensor();
 
-    void deleteMotionSensor(std::string name);
+    float getTemperature();
 
-    void deleteLamp(std::string name);
+    float getTime();
 
-    void deleteWatch(std::string name);
-
-    void deleteThermometer(std::string name);
-
-    void addScenario(std::string scenario);
-
-    void deleteScenario(std::string scenario);
+    bool isMovement();
     
 };

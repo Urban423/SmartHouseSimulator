@@ -49,7 +49,7 @@ struct VertexWithoutNormal
 	#include "AndroidFileManager.h"
 	#define _Window AndroidFilter 
 	#define _Input AndroidInputManager
-#elif windows
+#elif windowsOS
 	#include "Window.h"
 	#include "KeyBoard.h"
 	#define _Window Window 
@@ -71,7 +71,7 @@ public:
 	inline static _Input&  getInputInstance()  { return input; };
 	inline static _Window& getOutputInstance() { return window; };
 	
-	static Mesh readFBX(const char* filename);
+	static std::vector<Mesh> readFBX(const char* filename);
 	static TextureStruct readBMP(const char* filename);
 private:
 	static _Input input;

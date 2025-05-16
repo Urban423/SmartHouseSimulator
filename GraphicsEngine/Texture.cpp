@@ -1,11 +1,6 @@
 #include "Texture.h"
 #include "GraphicConfig.h"
 
-Texture::Texture(const TextureStruct desc)
-{
-	init(desc);
-}
-
 void Texture::init(const TextureStruct desc)
 {
 	width = desc.width;
@@ -24,8 +19,6 @@ void Texture::init(const TextureStruct desc)
 	
 	delete[] desc.pixels;
 }
-
-//Texture::~Texture() {}
 
 
 

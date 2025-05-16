@@ -27,41 +27,52 @@ void RenderManager::calculateCameraView(const Transform& camera, Camera& cameraD
 
 void RenderManager::init() {
 	//create texture
-	textures.resize(1);
-	textures[0] = GraphicsEngine::createTexture(IOSystem::readBMP("ghost2.bmp"));
+	const char* textureFiles[] = {
+		"floorWooden1.bmp",
+		"Tile.bmp",
+		"Tile1.bmp",
+		"Floortex.bmp",
+		"Grass.bmp",
+		"Ghost.bmp",
+		"Thermometr.bmp",
+		"MotionSensor.bmp",
+		"Clock.bmp",
+	};
+	for(int i = 0; i < sizeof(textureFiles) / sizeof(const char*); i++) {
+		TextureStruct assa  = IOSystem::readBMP(textureFiles[i]);
+		textures.push_back(GraphicsEngine::createTexture(assa));
+	}
 
 	//create shader
 	const char* shadersFiles[] = {
 		"shader.vsh",
 		"shader.fsh",
 		
-		"shader1.vsh",
-		"shader1.fsh",
-		
 		"shader2.vsh",
 		"shader2.fsh",
 		
 		"shader3.vsh",
 		"shader3.fsh",
+		
+		"shader4.vsh",
+		"shader4.fsh",
 	};
-	shaders.resize(4);
-	for(int i = 0; i < 8; i+=2) {
-		shaders[i / 2] = GraphicsEngine::createShaderProgram({openCFile(shadersFiles[i]).getPtr(), openCFile(shadersFiles[i + 1]).getPtr()});
+	for(int i = 0; i < sizeof(shadersFiles) / sizeof(const char*); i+=2) {
+		shaders.push_back( GraphicsEngine::createShaderProgram({openCFile(shadersFiles[i]).getPtr(), openCFile(shadersFiles[i + 1]).getPtr()}) );
 	}
 	
 	//create shape points
-	vertexes.resize(3);
-	indicies.resize(3);
 	const char* files[] = {
-		"sphere.fbx",
-		"testMesh.fbx",
-		"Plane.fbx"
+		"Plane.fbx",
+		"HouseMap.fbx",
 	};
-	for(int i = 0; i < 3; i++) {
-		Mesh mesh = IOSystem::readFBX(files[i]);
-		indicies[i] = GraphicsEngine::createIndexArrayObject({ (unsigned int*)mesh.index,  (unsigned int)mesh.index_size });
-		vertexes[i] = GraphicsEngine::createVertexArrayObject({ mesh.vertex, sizeof(Vertex), (unsigned int)mesh.vertex_size });
-		//freeMesh(mesh);
+	for(int i = 0; i < sizeof(files) / sizeof(const char*); i++) {
+		std::vector<Mesh> meshes = IOSystem::readFBX(files[i]);
+		for(int j = 0; j < meshes.size(); j++) {
+			indicies.push_back(GraphicsEngine::createIndexArrayObject({ (unsigned int*)meshes[j].index,  (unsigned int)meshes[j].index_size, meshes[j].number_of_materials, meshes[j].materials }));
+			vertexes.push_back(GraphicsEngine::createVertexArrayObject({ meshes[j].vertex, sizeof(Vertex), (unsigned int)meshes[j].vertex_size }));
+			//freeMesh(mesh);
+		}
 	}
 	
 	//Mesh plane = PerlinNoiseMesh(100, 100, 6.0f, 0, 0.9f, 13);
@@ -70,52 +81,73 @@ void RenderManager::init() {
 }
 
 
+void RenderManager::renderCamera(Camera& camera, int renderViewIndex) {
+	calculateCameraView(camera.object.transform, camera);
+	
+	if(renderViewIndex == 0) {
+		
+	}
+	else {
+		
+	}
+	
+	GraphicsEngine::setViewPort(camera.left, camera.top, camera.right, camera.bottom);
+	// GraphicsEngine::clearDepthBuffer();
+	// GraphicsEngine::setShaderProgram(shaders[1]);
+	// GraphicsEngine::setVertexArrayObject(vertexes[2]);
+	// GraphicsEngine::setIndexArrayObject(indicies[2]);
+	// GraphicsEngine::drawTriangles(indicies[2]->getNumberOfMaterials(), 0);
+	//GraphicsEngine::clearDepthBuffer();
+	GraphicsEngine::clearColorDepthBuffer();
+	
+	std::pair<RenderView*, int> s = ECS::GetComponents<RenderView>(renderViewIndex);
+	RenderView* renderView = s.first;
+	for(int i = s.second - 1; i > -1; i--) {
+		if(renderView[i].enabled == false) { continue; }
+		
+		//set shape
+		GraphicsEngine::setVertexArrayObject(vertexes[renderView[i].mesh_index]);
+		GraphicsEngine::setIndexArrayObject(indicies[renderView[i].mesh_index]);
+		
+		//calculate transform
+		Transform& transform = renderView[i].object.transform;
+		Matrix4x4 world, temp;
+		world.setIdentity();
+		world.setScale(transform.scale);
+		
+		temp.setIdentity();
+		temp.setTranslation(transform.position);
+		world *= temp;
+		
+		//render object
+		int number_of_materials = std::min(indicies[renderView[i].mesh_index]->getNumberOfMaterials(), (unsigned int)renderView[i].shader_indexes.size());
+		number_of_materials = std::min((int)renderView[i].texture_indexes.size(), number_of_materials);
+		int offset = 0;
+		for(int j = 0; j < number_of_materials; j++) {
+			//set material
+			GraphicsEngine::setShaderProgram(shaders[renderView[i].shader_indexes[j]]);
+			GraphicsEngine::setProjectionMatrix(shaders[renderView[i].shader_indexes[j]], camera.projection);
+			GraphicsEngine::setCameraViewMatrix(shaders[renderView[i].shader_indexes[j]], camera.camView);
+			
+			GraphicsEngine::setTexture(textures[renderView[i].texture_indexes[j]], shaders[renderView[i].shader_indexes[j]]);
+			GraphicsEngine::setVector4( shaders[renderView[i].shader_indexes[j]], Vector4(renderView[i].color.r, renderView[i].color.g, renderView[i].color.b, 1));
+			GraphicsEngine::setMatrix(shaders[renderView[i].shader_indexes[j]], world);
+			
+			int number_of_triangles = indicies[renderView[i].mesh_index]->getMaterialSize(j);
+			GraphicsEngine::drawTriangles(number_of_triangles, (void*)(offset * sizeof(int)));
+			offset += number_of_triangles;
+		}
+	}
+}
+
 void RenderManager::Render() { 
 	GraphicsEngine::disable3D();
-	std::pair<Camera*, int> s1 = ECS::GetComponents<Camera>(0);
-	Camera* camera = s1.first;
-	for(int cameraIndex = 0; cameraIndex < s1.second; cameraIndex++) {
-		Camera& camData = camera[cameraIndex];
-		calculateCameraView(camData.object.transform, camData);
-		GraphicsEngine::setProjectionMatrix(shaders[0], camData.projection);
-		GraphicsEngine::setCameraViewMatrix(shaders[0], camData.camView);
-		
-		//printf("%d %d %d %d\n", camData.left, camData.top, camData.right, camData.bottom);
-		GraphicsEngine::setViewPort(camData.left, camData.top, camData.right, camData.bottom);
-		// GraphicsEngine::clearDepthBuffer();
-		// GraphicsEngine::setShaderProgram(shaders[1]);
-		// GraphicsEngine::setVertexArrayObject(vertexes[2]);
-		// GraphicsEngine::setIndexArrayObject(indicies[2]);
-		// GraphicsEngine::drawTriangles(indicies[2]->getNumberOfMaterials(), 0);
-		//GraphicsEngine::clearDepthBuffer();
-		GraphicsEngine::clearColorDepthBuffer();
-		
-		std::pair<RenderView*, int> s = ECS::GetComponents<RenderView>(camData.RenderViewDataIndex);
-		RenderView* renderView = s.first;
-		for(int i = s.second - 1; i > -1; i--) {
-			if(renderView[i].enabled == false) { continue; }
-			
-			//set material
-			GraphicsEngine::setShaderProgram(shaders[renderView[i].shader_index]);
-			GraphicsEngine::setTexture(textures[renderView[i].texture_index], shaders[renderView[i].shader_index]);
-			GraphicsEngine::setVector4( shaders[renderView[i].shader_index], Vector4(renderView[i].color.r, renderView[i].color.g, renderView[i].color.b, 1));
-			
-			//set shape
-			GraphicsEngine::setVertexArrayObject(vertexes[renderView[i].mesh_index]);
-			GraphicsEngine::setIndexArrayObject(indicies[renderView[i].mesh_index]);
-			
-			Transform& transform = renderView[i].object.transform;
-			
-			Matrix4x4 world, temp;
-			world.setIdentity();
-			world.setScale(transform.scale);
-			
-			temp.setIdentity();
-			temp.setTranslation(transform.position);
-			world *= temp;
-			
-			GraphicsEngine::setMatrix(shaders[renderView[i].shader_index], world);
-			GraphicsEngine::drawTriangles(indicies[renderView[i].mesh_index]->getNumberOfMaterials(), 0);
+	int groupCounter = ECS::GetComponentGroupSize<Camera>();
+	for(int i = groupCounter - 1; i >= 0; i--) {
+		auto[cameras, size] = ECS::GetComponents<Camera>(i);
+		for(int j = 0; j < size; j++) {
+			renderCamera(cameras[j], i);
 		}
+		break;
 	}
 }

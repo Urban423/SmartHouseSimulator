@@ -1,7 +1,5 @@
 #include "IOSystem.h"
 
-
-
 TextureStruct IOSystem::readBMP(const char* filename)
 {
 	CFile f = openCFile(filename);
@@ -45,6 +43,7 @@ TextureStruct IOSystem::readBMP(const char* filename)
     readCFile(&biClrUsed, sizeof(int), f);
     readCFile(&biClrImportant, sizeof(int), f);
 	
+	
 	//move to main data
 	seekCFile(f, bfOffBits, SEEK_SET);
 	
@@ -52,14 +51,13 @@ TextureStruct IOSystem::readBMP(const char* filename)
 	TextureStruct texture;
 	texture.width = biWidth;
 	texture.height = biHeight;
-    texture.pixels = (int*)malloc(biWidth * biHeight * sizeof(int));
+    texture.pixels = new int[biWidth * biHeight];
 	
 	//helping values
 	char temp = 0;
 	unsigned int index = 0;
 	
-    for(int y = 0; y < biHeight; y++) 
-	{
+    for(int y = 0; y < biHeight; y++)  {
 		// left_bottom_corner index -> left_to_corner index
 		//index = (biHeight - y - 1) * biWidth;
 		
@@ -67,14 +65,19 @@ TextureStruct IOSystem::readBMP(const char* filename)
 		{
 			int r;
 			readCFile(&r, biBitCount / 8, f);
+			char* bytes = reinterpret_cast<char*>(&r);
+			std::swap(bytes[0], bytes[2]);
+			if(biBitCount < 32) {
+				bytes[3] = 0xff;
+			}
 			texture.pixels[index] = r;
-			
-			//change indexes
 			index++;
         }
 		
 		//skip offset
-		seekCFile(f,  (biWidth * (biBitCount / 8)) % 4, SEEK_CUR);
+		int rowBytes = (biBitCount / 8) * biWidth;
+		int padding = (4 - (rowBytes % 4)) % 4;
+		seekCFile(f, padding, SEEK_CUR);
     }
 	
 	return texture;

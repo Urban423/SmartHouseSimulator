@@ -3,6 +3,7 @@
 #include "GraphicsEngine.h"
 #include <umath.h>
 
+#include <time.h>
 #include <thread>
 #include <vector>
 #include "Scene.h"

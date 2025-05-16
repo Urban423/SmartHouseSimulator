@@ -4,20 +4,12 @@
 
 
 
-bool Check2Strings(char* a, char* b)
-{
-	while(1)
-	{
-		if(*a != *b)
-		{
-			return false;
-		}
-		if(*a == 0)
-		{
-			break;
-		}
-		a++;
-		b++;
+bool Check2Strings(char* a, char* b) {
+	while(1) {
+		if(*a != *b) return false;
+		if(*a == 0) break;
+		++a;
+		++b;
 	}
 	return true;
 }
@@ -26,10 +18,7 @@ bool Check2Strings(char* a, char* b)
 
 
 
-FBXfile::FBXfile(CFile& file)
-{
-	
-	
+FBXfile::FBXfile(CFile& file) {
 	//head
 	char Kaydara_FBX_Binary[22] = { 0 };
 	readCFile(Kaydara_FBX_Binary, 21, file);
@@ -114,23 +103,28 @@ FBXfile::~FBXfile()
 }
 
 
-Node* FBXfile::findChildrenByName(const char* name, Node* node)
-{
-	if(node == nullptr){return nullptr;}
+std::vector<Node*> FBXfile::findChildrenByName(const char* name, Node* node) {
+	if(node == nullptr){ return std::vector<Node*>(); }
 	char* sName = const_cast<char*>(name);
-	for(int i = 0; i < node->children.size(); i++)
-	{
-		if(Check2Strings(node->children[i]->name, sName))
-		{
+	std::vector<Node*> children;
+	for(int i = 0; i < node->children.size(); i++) {
+		if(Check2Strings(node->children[i]->name, sName)) {
+			children.push_back(node->children[i]);
+		}
+	}
+	return children;
+}
+
+Node* FBXfile::findChildByName(const char* name, Node* node) {
+	if(node == nullptr){ return nullptr; }
+	char* sName = const_cast<char*>(name);
+	std::vector<Node*> children;
+	for(int i = 0; i < node->children.size(); i++) {
+		if(Check2Strings(node->children[i]->name, sName)) {
 			return node->children[i];
 		}
 	}
 	return nullptr;
-}
-
-Node* FBXfile::getRoot()
-{
-	return &root;
 }
 
 unsigned char* FBXfile::readArray(int& ArrayLength, int typeSize, CFile& file)
@@ -204,13 +198,7 @@ AllProps FBXfile::getProperties(char type, CFile& file)
 			return prop;
 		}
 		
-		
-		
-		
-		case('R'):
-		{
-			
-		}
+		case('R'): { }
 		case('S'):
 		{
 			readCFile(&prop.ArrayLength, sizeof(int), file);
