@@ -1,5 +1,5 @@
 #pragma once
-
+#include <utility>
 
 class FrameBuffer
 {
@@ -8,7 +8,8 @@ public:
 	FrameBuffer(int width, int height): width(width), height(height) 	{ init(); }
 	~FrameBuffer() 														{ destroy(); }
 	
-	unsigned int getColorTexture() const { return colorTexture; }
+	inline unsigned int getColorTexture() const	{ return colorTexture; }
+	inline std::pair<int, int>  getSize() const	{ return {width, height}; }
 	
 	void bind();
 	void unbind();
@@ -20,6 +21,6 @@ private:
 	unsigned int fbo = 0;
 	unsigned int colorTexture = 0;
 	
-	int width;
-	int height;
+	int width = 500;
+	int height = 200;
 };

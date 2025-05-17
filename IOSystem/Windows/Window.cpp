@@ -19,12 +19,6 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
 			}		
 			break;
 		}
-		case WM_SIZE: { 
-		if (wParam == SIZE_RESTORED || wParam == SIZE_MAXIMIZED) {
-				win->setSize();
-			}	
-			break; 
-		};
 		case WM_GETMINMAXINFO: {
             MINMAXINFO* pMinMax = (MINMAXINFO*)lParam;
             pMinMax->ptMinTrackSize.x = 400;

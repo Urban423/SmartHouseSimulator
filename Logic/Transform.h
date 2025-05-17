@@ -41,16 +41,9 @@ struct Component {
 };
 
 struct  Camera: public Component {
-	Matrix4x4 camView;
-	Matrix4x4 projection;
-	
-	int RenderViewDataIndex;
-	float focalLength = 0.004;
-	int frameBufferIndex = -1;
-	int left = 0;
-	int right = 100;
-	int top = 0;
-	int bottom = 100;
+	Color color				= Color(0, 0, 0, 1);
+	float focalLength 		= 0.004;
+	int frameBufferIndex 	= -1;
 };
 
 struct Transform {

@@ -11,8 +11,9 @@ public:
 	~Window();
 	
 	//size
-	inline Rect getCenter() { return Rect(centerX, centerY); }
-	inline Rect getInnerSize() { RECT rc; GetClientRect(_hwnd, &rc); POINT topLeft = {rc.left, rc.top}; POINT bottomRight = {rc.right, rc.bottom}; ClientToScreen(_hwnd, &topLeft); ClientToScreen(_hwnd, &bottomRight); rect = { (float)topLeft.x, (float)topLeft.y, (float)bottomRight.x, (float)bottomRight.y };; return rect; }
+	inline Rect					getCenter() { return Rect(centerX, centerY); }
+	inline Rect 				getInnerSize() { RECT rc; GetClientRect(_hwnd, &rc); POINT topLeft = {rc.left, rc.top}; POINT bottomRight = {rc.right, rc.bottom}; ClientToScreen(_hwnd, &topLeft); ClientToScreen(_hwnd, &bottomRight); rect = { (float)topLeft.x, (float)topLeft.y, (float)bottomRight.x, (float)bottomRight.y };; return rect; }
+	inline std::pair<int, int> 	getSize() { RECT rc; GetClientRect(_hwnd, &rc); POINT topLeft = {rc.left, rc.top}; POINT bottomRight = {rc.right, rc.bottom}; ClientToScreen(_hwnd, &topLeft); ClientToScreen(_hwnd, &bottomRight); return {bottomRight.x - topLeft.x, bottomRight.y - topLeft.y}; }
 	void setPos(float x, float y);
 	void setFullscreen(const bool state);
 	

@@ -10,6 +10,9 @@ public:
 	static unsigned int	CreateTexture 		(const TextureStruct desc);
 	static unsigned int	CreateFrameBuffer	();
 	static void			DeleteTexture		(unsigned int id);
+	static void 		SetRenderTarget		(unsigned int id);
+	static void 		ResizeFrameBuffer	(unsigned int id, int width, int height);
+	static std::pair<int, int> GetTextureSize(unsigned int id);
 private:
 	static TextureManager* 		textureManager;
 	std::stack<unsigned int>	freeTextureIDs;

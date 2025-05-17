@@ -1,4 +1,6 @@
 #include "TextureManager.h"
+#include "GraphicsEngine.h"
+
 
 #define TYPE_BIT 	1 << 31
 #define VALID_BIT 	1 << 30
@@ -79,4 +81,28 @@ void TextureManager::DeleteTexture(unsigned int id) {
 			textureManager->freeFramebufferIDs.push(index);
 		}
 	}
+}
+
+void TextureManager::SetRenderTarget(unsigned int id) {
+	unsigned int index = GetIndex(id);
+	if (GetType(id) == TEXTURE || id == -1) {
+		GraphicsEngine::setRenderTargetWindow();
+	}
+	else {
+		textureManager->frameBuffers[index]->bind();
+	}
+}
+
+void TextureManager::ResizeFrameBuffer(unsigned int id, int width, int height) {
+	unsigned int index = GetIndex(id);
+	if (GetType(id) == TEXTURE || id == -1) { return; }
+	textureManager->frameBuffers[index]->resize(width, height);
+}
+
+std::pair<int, int> TextureManager::GetTextureSize(unsigned int id) {
+	unsigned int index = GetIndex(id);
+	if (GetType(id) == TEXTURE) { 
+		return textureManager->textures[index]->getSize();
+	}
+	return textureManager->frameBuffers[index]->getSize();
 }

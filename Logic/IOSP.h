@@ -1,5 +1,6 @@
 #pragma once
 #include "../IOSystem/IOSystem.h"
+#include "../GraphicsEngine/TextureManager.h"
 #include "Vector2.h"
 
 #define KeyCode_LeftMouseButton 	1
@@ -58,11 +59,13 @@
 #define KeyCode_Z  90
 
 
-inline bool 	GetKey(unsigned char key) 		{ return IOSystem::getInputInstance().getInputState()[key] & 0x80; }
-inline bool 	GetKeyDown(unsigned char key) 	{ return (IOSystem::getInputInstance().getInputState()[key] & 0x80) && (IOSystem::getInputInstance().getOldInputState()[key] & 0x80) != 0x80; }
-inline bool 	GetKeyUp(unsigned char key) 	{ return (IOSystem::getInputInstance().getInputState()[key] & 0x80) != 0x80 && (IOSystem::getInputInstance().getOldInputState()[key] & 0x80); }
-inline Vector2 	mousePositionDelta() 			{ return Vector2(IOSystem::getInputInstance().getPos()->x - IOSystem::getInputInstance().getOldPos()->x, IOSystem::getInputInstance().getPos()->y - IOSystem::getInputInstance().getOldPos()->y); }
-inline void		setInputEventSystemI();
+inline bool 		GetKey(unsigned char key) 		{ return IOSystem::getInputInstance().getInputState()[key] & 0x80; }
+inline bool 		GetKeyDown(unsigned char key) 	{ return (IOSystem::getInputInstance().getInputState()[key] & 0x80) && (IOSystem::getInputInstance().getOldInputState()[key] & 0x80) != 0x80; }
+inline bool 		GetKeyUp(unsigned char key) 	{ return (IOSystem::getInputInstance().getInputState()[key] & 0x80) != 0x80 && (IOSystem::getInputInstance().getOldInputState()[key] & 0x80); }
+inline Vector2 		mousePositionDelta() 			{ return Vector2(IOSystem::getInputInstance().getPos()->x - IOSystem::getInputInstance().getOldPos()->x, IOSystem::getInputInstance().getPos()->y - IOSystem::getInputInstance().getOldPos()->y); }
+inline void			setInputEventSystemI();
+inline void			resizeFrameBuffer(unsigned int id, int width, int height) { return TextureManager::ResizeFrameBuffer(id, width, height); }
+inline std::pair<int, int> getWindowSize() { return IOSystem::getOutputInstance().getSize(); }
 
 inline Vector2	getMouseScene() { 
 	Rect winSize = IOSystem::getOutputInstance().getInnerSize();

@@ -7,6 +7,7 @@
 #include "InputEventSystem.h"
 #include "NavMeshSystem.h"
 #include "CameraControlSystem.h"
+#include "TextureManager.h"
 #include "BotLogic.h"
 #include "Lamp.h"
 
@@ -14,10 +15,10 @@
 #include <cstdio>
 #include <cmath>
 
-void createMainSimulation() {
+unsigned int createMainSimulation() {
 	Object MainCamera = ECS::createObject();
 	MainCamera.AddComponent<CameraControlSystem>();
-	MainCamera.AddComponent<Camera>(1);
+	MainCamera.AddComponent<Camera>(1).color.r = 1;
 	
 	
 	Object HouseWalls = ECS::createObject();
@@ -50,6 +51,9 @@ void createMainSimulation() {
 	Grass.AddComponent<RenderView>(1).mesh_index = 0;
 	Grass.GetComponent<RenderView>().texture_indexes[0] = 4;
 	Grass.GetComponent<RenderView>().shader_indexes[0] = 3;
+	
+	
+	return MainCamera.GetComponent<Camera>().frameBufferIndex = TextureManager::CreateFrameBuffer();
 }
 
 void Scene::Start() {
@@ -65,7 +69,7 @@ void Scene::Start() {
 	controlablePanels = ECS::createObject();
 	controlablePanels.transform.scale = Vector3(0.1f, 0.1f, 0.1f);
 	controlablePanels.AddComponent<Camera>();
-	controlablePanels.AddComponent<RenderView>(0).enabled = true;
+	controlablePanels.AddComponent<RenderView>(0).enabled = false;
 	controlablePanels.GetComponent<RenderView>().shader_indexes[0] = 2;
 	controlablePanels.AddComponent<InputEventSystem>();
 	
@@ -74,8 +78,8 @@ void Scene::Start() {
 	Object panel 	= ECS::createObject();
 	panel.AddComponent<RenderView>(0).shader_indexes[0] = 1;
 	controlablePanels.AddComponent<ScreenLogic>().controlPanelRender = controlablePanels;
-	controlablePanels.GetComponent<ScreenLogic>().split({ 0.75, 0, 0}, {2, 1, 1});
-	controlablePanels.GetComponent<ScreenLogic>().split({0, -0.75, 0}, {1, 2, 1});
+	//controlablePanels.GetComponent<ScreenLogic>().split({ 0.75, 0, 0}, {2, 1, 1});
+	//controlablePanels.GetComponent<ScreenLogic>().split({0, -0.75, 0}, {1, 2, 1});
 	
 	// Object button = ECS::createObject();
 	// button.AddComponent<Camera>().RenderViewDataIndex = 1;
@@ -83,7 +87,7 @@ void Scene::Start() {
 	// button.AddComponent<InputEventSystem>(0);
 	// Grab& grabObj = button.AddComponent<Grab>(0);
 	// button.AddComponent<Button>(0).onMouseDown = std::bind(&Grab::grab, grabObj);
-	createMainSimulation();
+	panel.GetComponent<RenderView>().texture_indexes[0] = createMainSimulation();
 	NavMeshSystem::getPtr()->Start();
 }
 
@@ -96,4 +100,7 @@ void Scene::Update() {
 	for(int i = 0; i < cameraControlSystemSize; i++) { cameraControlSystem[i].UpdateFPSO(); }
 	auto[botLogic, BotLogicSize] = ECS::GetComponents<BotLogic>(0);
 	for(int i = 0; i < BotLogicSize; i++) { botLogic[i].Update(); }
+	
+	auto[inputEventSystem, InputEventSystemLogicSize] = ECS::GetComponents<InputEventSystem>(0);
+	for(int i = 0; i < InputEventSystemLogicSize; i++) { inputEventSystem[i].Update(); }
 }
