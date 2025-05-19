@@ -8,6 +8,7 @@
 #include "NavMeshSystem.h"
 #include "CameraControlSystem.h"
 #include "TextureManager.h"
+#include "Timer.h"
 #include "BotLogic.h"
 #include "Lamp.h"
 
@@ -27,11 +28,13 @@ unsigned int createMainSimulation() {
 	HouseWalls.GetComponent<RenderView>().color = Color(0, 0, 0, 0);
 	HouseWalls.GetComponent<RenderView>().texture_indexes[0] = 3;
 	
-	Object Bot = ECS::createObject();
-	Bot.transform.scale = Vector3(0.04f, 0.04f, 0.04f);
-	Bot.AddComponent<RenderView>(1).texture_indexes[0] = 5;
-	Bot.AddComponent<NavMeshAgent>(0).speed = 0.01;
-	Bot.AddComponent<BotLogic>(0);
+	for(int i = 0; i < 5000; i++) {
+		Object Bot = ECS::createObject();
+		Bot.transform.scale = Vector3(0.04f, 0.04f, 0.04f);
+		Bot.AddComponent<RenderView>(1).texture_indexes[0] = 5;
+		Bot.AddComponent<NavMeshAgent>(0).speed = 0.01;
+		Bot.AddComponent<BotLogic>(0);
+	}
 	
 	
 	Object House = ECS::createObject();
@@ -57,7 +60,7 @@ unsigned int createMainSimulation() {
 }
 
 void Scene::Start() {
-	// transforms[i] = { Vector3(0, 0, 0), Quaternion(0, 0, 0, 1), Vector3(1, 1, 1) };
+	Time::timeScale = 50.0f;
 	// collisions[i].offset = Vector3(static_cast<float>(rand()), static_cast<float>(rand()), static_cast<float>(rand())).normalized() * 0.1f;
 	// collisions[i].radius = static_cast<float>(rand() % 1000) / 20000 + 0.01;
 	// transforms[i].scale = Vector3(collisions[i].radius, collisions[i].radius, collisions[i].radius);
@@ -93,11 +96,13 @@ void Scene::Start() {
 
 
 void Scene::Update() {
+	Time::UpdateTimeSystem();
 	controlablePanels.GetComponent<ScreenLogic>().update();
 	NavMeshSystem::getPtr()->Update();
 	
 	auto[cameraControlSystem, cameraControlSystemSize] = ECS::GetComponents<CameraControlSystem>(0);
 	for(int i = 0; i < cameraControlSystemSize; i++) { cameraControlSystem[i].UpdateFPSO(); }
+	
 	auto[botLogic, BotLogicSize] = ECS::GetComponents<BotLogic>(0);
 	for(int i = 0; i < BotLogicSize; i++) { botLogic[i].Update(); }
 	
