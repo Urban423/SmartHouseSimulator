@@ -7,11 +7,12 @@ class LampComponent: public Component {
 public:
 	void turn(bool on) {
 		if(on) {
-			light.GetComponent<RenderView>().enabled = true;
+			object.GetComponent<RenderView>().texture_indexes[0] = 7;
 		}
-		else {
-			light.GetComponent<RenderView>().enabled = false;
-		}
+	 else {
+		object.GetComponent<RenderView>().texture_indexes[0] = 8;
+	 }
+
 	}
 public:
 	bool switcher;
@@ -19,7 +20,7 @@ public:
 	int roomId = 0;
 };
 
-void callLamps() {
+inline void callLamps() {
 	std::pair<LampComponent*, int> s = ECS::GetComponents<LampComponent>();
 	for(int i = 0; i < s.second; i++) {
 		if(s.first[i].roomId == BATHROOM) s.first[i].turn(true);

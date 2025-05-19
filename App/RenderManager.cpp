@@ -33,6 +33,9 @@ void RenderManager::init() {
 		"Grass.bmp",
 		"Ghost.bmp",
 		"Ghost1.bmp",
+		"LightBulb.bmp",
+		"LightBulbOff.bmp",
+		"MotionSensor.bmp"
 	};
 	for(int i = 0; i < sizeof(textureFiles) / sizeof(const char*); i++) {
 		TextureStruct assa  = IOSystem::readBMP(textureFiles[i]);

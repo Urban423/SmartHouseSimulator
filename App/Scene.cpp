@@ -11,6 +11,8 @@
 #include "Timer.h"
 #include "BotLogic.h"
 #include "Lamp.h"
+#include "MotionSensor.h"
+#include "Server.h"
 
 #include <math.h>
 #include <cstdio>
@@ -20,6 +22,14 @@ unsigned int createMainSimulation() {
 	Object MainCamera = ECS::createObject();
 	MainCamera.AddComponent<CameraControlSystem>();
 	MainCamera.AddComponent<Camera>(1).color.r = 1;
+
+	Object server = ECS::createObject();
+	server.AddComponent<Server>();
+
+	Object lamp = server.GetComponent<Server>().addLamp();
+	Object motionSensor = server.GetComponent<Server>().addMotionSensor();
+	motionSensor.transform.position = Vector3(-0.3, 0, 0);
+	
 	
 	
 	Object HouseWalls = ECS::createObject();
@@ -28,7 +38,7 @@ unsigned int createMainSimulation() {
 	HouseWalls.GetComponent<RenderView>().color = Color(0, 0, 0, 0);
 	HouseWalls.GetComponent<RenderView>().texture_indexes[0] = 3;
 	
-	for(int i = 0; i < 5000; i++) {
+	for(int i = 0; i < 3; i++) {
 		Object Bot = ECS::createObject();
 		Bot.transform.scale = Vector3(0.04f, 0.04f, 0.04f);
 		Bot.AddComponent<RenderView>(1).texture_indexes[0] = 5;
@@ -92,6 +102,8 @@ void Scene::Start() {
 	// button.AddComponent<Button>(0).onMouseDown = std::bind(&Grab::grab, grabObj);
 	panel.GetComponent<RenderView>().texture_indexes[0] = createMainSimulation();
 	NavMeshSystem::getPtr()->Start();
+	auto[motionSensor, motionSensorSize] = ECS::GetComponents<MotionSensor>(0);
+	for(int i = 0; i < motionSensorSize; i++) { motionSensor[i].start(); }
 }
 
 
@@ -108,4 +120,9 @@ void Scene::Update() {
 	
 	auto[inputEventSystem, InputEventSystemLogicSize] = ECS::GetComponents<InputEventSystem>(0);
 	for(int i = 0; i < InputEventSystemLogicSize; i++) { inputEventSystem[i].Update(); }
+
+	auto[motionSensor, motionSensorSize] = ECS::GetComponents<MotionSensor>(0);
+	for(int i = 0; i < motionSensorSize; i++) { motionSensor[i].update(); }
+
+	
 }

@@ -1,17 +1,19 @@
 #pragma once
 #include "Transform.h"
 #include "ECS.h"
+#include "Lamp.h"
+#include "MotionSensor.h"
 
 class Server : public Component {
 public:
 
-    void addLamp();
+    Object addLamp();
 
-    void addThermometr();
+    Object addThermometr();
 
-    void addClock();
+    Object addClock();
 
-    void addMotionSensor();
+    Object addMotionSensor();
 
     float getTemperature();
 
