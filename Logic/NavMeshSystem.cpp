@@ -20,10 +20,15 @@ void NavMeshSystem::Update() {
 			continue;
 		}
 		
-		navMeshAgent[i].object.transform.position 
-			+= (navMeshAgent[i].aimTarget - navMeshAgent[i].object.transform.position).normalized() * navMeshAgent[i].speed * Time::deltaTime;
+		float deltaPath = navMeshAgent[i].speed * Time::deltaTime;
+		if(deltaPath * deltaPath >= Vector3::SqrDistance(navMeshAgent[i].object.transform.position, navMeshAgent[i].aimTarget)) { 
+			navMeshAgent[i].pathStatus = PathComplete;
+			navMeshAgent[i].object.transform.position = navMeshAgent[i].aimTarget;
+			continue;
+		}
 		
-		if(Vector3::SqrDistance(navMeshAgent[i].object.transform.position, navMeshAgent[i].aimTarget) < 0.0001f ) { navMeshAgent[i].pathStatus = PathComplete; }
+		navMeshAgent[i].object.transform.position 
+			+= (navMeshAgent[i].aimTarget - navMeshAgent[i].object.transform.position).normalized() * deltaPath;
 	}
 }
 

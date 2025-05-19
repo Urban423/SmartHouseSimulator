@@ -14,7 +14,6 @@ struct miniWinData {
 	int axis;
 	int pixel;
 };
-#include <cstdio>
 
 struct rectsCollisionData {
 	Vector4 points;
@@ -29,6 +28,7 @@ public:
 	void 	split(Vector3 position, Vector3 scale);
 	Object	findArea(float x, float y);
 	Vector4	fillArea(Vector2 center, int axis);
+	void	resizeWindows(int width, int height);
 public:
 	Rect rect 		= {-1, -1, 1, 1};
 	Object controlPanelRender;

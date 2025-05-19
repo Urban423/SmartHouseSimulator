@@ -2,23 +2,15 @@
 #include "ECS.h"
 #include "Transform.h"
 #include "CameraControlSystem.h"
+#include "ScreenLogic.h"
 #include <stdio.h>
 
+char Input::mouseScrollDelta = 0;
+
 void InputEventSystem::setSize(int width, int height) {
-	int groupCounter = ECS::GetComponentGroupSize<Camera>();
-	for(int i = groupCounter - 1; i >= 0; i--) {
-		std::pair<Camera*, int> s1 = ECS::GetComponents<Camera>(i);
-		Camera* camera = s1.first;
-		for(int cameraIndex = 0; cameraIndex < s1.second; cameraIndex++) {
-			Camera& camData = camera[cameraIndex];
-			camData.left = 0;
-			camData.right = width;
-			camData.top = 0;
-			camData.bottom = height;
-			camData.projection.setIdentity();
-			camData.projection.setOrthoLH((float)width * camData.focalLength, (float)height * camData.focalLength, -4, 4);
-			//camData.projection.setPerspectiveFovLH(1.17f, size.x / size.y, 0.01f, 1111);
-		}
+	std::pair<ScreenLogic*, int> s2 = ECS::GetComponents<ScreenLogic>(0);
+	for(int cameraIndex = 0; cameraIndex < s2.second; cameraIndex++) {
+		s2.first[cameraIndex].resizeWindows(width, height);
 	}
 }
 
@@ -58,12 +50,13 @@ void InputEventSystem::handleMouseClickUp(float x, float y) {
 
 void InputEventSystem::handleMouseWheel(char delta) {
 	if(delta != 120 && delta != -120) { return; }
-	auto[cameraControlSystems, size] = ECS::GetComponents<CameraControlSystem>();
-	for(int i = 0 ; i < size; i++) {
-		cameraControlSystems[i].ChangeDist(delta);
-	}
+	Input::mouseScrollDelta = delta;
 }
 
 void InputEventSystem::handleKeyDown(int key) {
 	wprintf(L"%c", key);
+}
+
+void InputEventSystem::Update() {
+	Input::mouseScrollDelta = 0;
 }

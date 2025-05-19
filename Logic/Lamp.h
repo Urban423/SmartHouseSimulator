@@ -30,6 +30,5 @@ class Grab: public Component {
 public:
 	void grab() {
 		object.transform.position.x += 0.1f;
-		printf("%f\n", object.transform.position.x);
 	}
 };

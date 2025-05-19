@@ -8,6 +8,8 @@ void createObjectCopy(Vector3 newPos, Vector3 newScale, Object original) {
 	Object copy = ECS::createObject();
 	copy.transform = {newPos, Quaternion(0, 0, 0, 1), newScale};
 	copy.AddComponent<RenderView>(0).shader_indexes[0] = original.GetComponent<RenderView>().shader_indexes[0];
+	//copy.AddComponent<Cameras>().texture_indexes[0] = original.GetComponent<RenderView>().texture_indexes[0];
+	copy.GetComponent<RenderView>().texture_indexes[0] = 6;
 }
 
 bool areNeighbors(int& axis, Vector3 posA, Vector3 scaleA, Vector3 posB, Vector3 scaleB) {
@@ -25,6 +27,7 @@ bool areNeighbors(int& axis, Vector3 posA, Vector3 scaleA, Vector3 posB, Vector3
 	}
 	return std::abs(distX) < EPSILON_RECTS;
 }
+
 
 rectsCollisionData getCollisionPoints(Vector3 posA, Vector3 scaleA, Vector3 posB, Vector3 scaleB) {
 	Vector2 box1_min = Vector2(posA.x - scaleA.x, posA.y - scaleA.y);
@@ -45,6 +48,15 @@ rectsCollisionData getCollisionPoints(Vector3 posA, Vector3 scaleA, Vector3 posB
 	std::sort(std::begin(points), std::end(points));
 	std::sort(std::begin(pointsAxis), std::end(pointsAxis));
 	return { { points[0], points[1], points[2], points[3]}, { pointsAxis[0], pointsAxis[1], pointsAxis[2], pointsAxis[3]}, axis, (points[0] == box2_min[!axis]) | ((points[3] == box2_max[!axis]) << 1) };
+}
+
+void ScreenLogic::resizeWindows(int width, int height) {
+	std::pair<RenderView*, int> s = ECS::GetComponents<RenderView>(0);
+	if(s.second == 0) { return; }
+	
+	for(int i = 1; i < s.second; i++) {
+		resizeFrameBuffer(s.first[i].texture_indexes[0], s.first[i].object.transform.scale.x * width, s.first[i].object.transform.scale.y * height);
+	}
 }
 
 void ScreenLogic::update() {
@@ -121,14 +133,17 @@ void ScreenLogic::update() {
 			controlPanelRender.transform.scale[axis] = newRectangle.transform.scale[axis];
 			controlPanelRender.GetComponent<RenderView>().enabled = true;
 			controlPanelRender.GetComponent<RenderView>().color.r = 0;
-			controlPanelRender.GetComponent<RenderView>().color.g = axis ? 0.5: 0;
-			controlPanelRender.GetComponent<RenderView>().color.b = axis ? 0: 0.5;
+			controlPanelRender.GetComponent<RenderView>().color.g = !axis ? 0.5: 0;
+			controlPanelRender.GetComponent<RenderView>().color.b = !axis ? 0: 0.5;
 		}
 	} 
 	else if(mouseState == MouseOnSplit) {
 		controlPanelRender.GetComponent<RenderView>().enabled = true;
 		MousePos[axis] = clamp(leftClamp + minSize, rightClamp - minSize, MousePos[axis]);
 		controlPanelRender.transform.position[axis] = MousePos[axis];
+		controlPanelRender.GetComponent<RenderView>().color.r = 1;
+		controlPanelRender.GetComponent<RenderView>().color.g = axis ? 0.5: 0;
+		controlPanelRender.GetComponent<RenderView>().color.b = axis ? 0: 0.5;
 		std::pair<RenderView*, int> s = ECS::GetComponents<RenderView>(0);
 		for(int i = 0; i < leftMove.size(); i++) {
 			int objID = leftMove[i];
@@ -140,11 +155,16 @@ void ScreenLogic::update() {
 			s.first[objID].object.transform.position[axis] = (rightSide[i] + MousePos[axis]) / 2;
 			s.first[objID].object.transform.scale[axis] = std::abs(rightSide[i] -  MousePos[axis]) / 2;
 		}
+		auto [width, height] = getWindowSize();
+		resizeWindows(width, height);
 	}
 	
 	if(GetKeyUp(KeyCode_LeftMouseButton)) {
 		if(new_zone) {
-			if(newRectangle.transform.position[axis] < rectangle.transform.position[axis]) { std::swap(rectangle, newRectangle); }
+			if(newRectangle.transform.position[axis] < rectangle.transform.position[axis]) { 
+				std::swap(rectangle, newRectangle);
+				std::swap(rectangle.GetComponent<RenderView>().texture_indexes[0], newRectangle.GetComponent<RenderView>().texture_indexes[0]);
+			}
 			rectsCollisionData collisionData = getCollisionPoints(rectangle.transform.position, rectangle.transform.scale, newRectangle.transform.position, newRectangle.transform.scale);
 			float zones[] = {
 				collisionData.points[1] - collisionData.points[0],
@@ -164,6 +184,8 @@ void ScreenLogic::update() {
 				ECS::deleteObject(newRectangle);
 				controlPanelRender.GetComponent<RenderView>().enabled = false;
 				mouseState = MouseOnFrame;
+				auto [width, height] = getWindowSize();
+				resizeWindows(width, height);
 				return;
 			}
 			else if(holes == 3) {
@@ -201,6 +223,8 @@ void ScreenLogic::update() {
 		}
 		controlPanelRender.GetComponent<RenderView>().enabled = false;
 		mouseState = MouseOnFrame;
+		auto [width, height] = getWindowSize();
+		resizeWindows(width, height);
 	}
 }
 
@@ -230,6 +254,8 @@ void ScreenLogic::split(Vector3 position, Vector3 scale) {
 	rectangle.transform.scale 	=  scale * Vector3(!axis, axis, 0) + Vector3::Distance(pointEdge1, rectangle.transform.position) * Vector3(axis, !axis, 0);
 	
 	createObjectCopy(newPos, newScale, rectangle);
+	auto [width, height] = getWindowSize();
+	resizeWindows(width, height);
 }
 
 bool checkAxis( const Transform& transform, const Vector2& center, int axis) {
