@@ -1,27 +1,25 @@
 #include "RenderManager.h"
 #include "IOSystem.h"
+#include "TextureManager.h"
 #include "ECS.h"
 #include <cstdio>
 
 RenderManager* RenderManager::renderManager = new RenderManager();
 
-void RenderManager::calculateCameraView(const Transform& camera, Camera& cameraData) {
+Matrix4x4 RenderManager::calculateCameraView(const Transform& camera) {
 	Matrix4x4 temp;
 	//temp.setRotation(player.transform->rotation);
 	
 	Matrix4x4 cam;
 	cam.setIdentity();
 	cam.setRotation(camera.rotation);
-	//printf("%f %f %f %f\n", player.camera->rotation.x, player.camera->rotation.y, player.camera->rotation.z, player.camera->rotation.w);
 	//cam *= temp;
 	
 	temp.setIdentity();
 	temp.setTranslation(camera.position);
-	//printf("%f %f %f\n", camera.position.x,  camera.position.y,  camera.position.z);
 	cam *= temp;
-	
-	cameraData.camView = cam;
-	cameraData.camView.inverse();
+	cam.inverse();
+	return cam;
 }
 
 
@@ -34,13 +32,11 @@ void RenderManager::init() {
 		"Floortex.bmp",
 		"Grass.bmp",
 		"Ghost.bmp",
-		"Thermometr.bmp",
-		"MotionSensor.bmp",
-		"Clock.bmp",
+		"Ghost1.bmp",
 	};
 	for(int i = 0; i < sizeof(textureFiles) / sizeof(const char*); i++) {
 		TextureStruct assa  = IOSystem::readBMP(textureFiles[i]);
-		textures.push_back(GraphicsEngine::createTexture(assa));
+		TextureManager::CreateTexture(assa);
 	}
 
 	//create shader
@@ -82,22 +78,21 @@ void RenderManager::init() {
 
 
 void RenderManager::renderCamera(Camera& camera, int renderViewIndex) {
-	calculateCameraView(camera.object.transform, camera);
+	TextureManager::SetRenderTarget(camera.frameBufferIndex);
 	
-	if(renderViewIndex == 0) {
-		
-	}
+	Matrix4x4 camView = calculateCameraView(camera.object.transform);
+	Matrix4x4 projection;
+	projection.setIdentity();
+	int width, height;
+	if(camera.frameBufferIndex == -1) { 
+		std::tie(width, height) = IOSystem::getOutputInstance().getSize();
+	} 
 	else {
-		
+		 std::tie(width, height) = TextureManager::GetTextureSize(camera.frameBufferIndex);
 	}
-	
-	GraphicsEngine::setViewPort(camera.left, camera.top, camera.right, camera.bottom);
-	// GraphicsEngine::clearDepthBuffer();
-	// GraphicsEngine::setShaderProgram(shaders[1]);
-	// GraphicsEngine::setVertexArrayObject(vertexes[2]);
-	// GraphicsEngine::setIndexArrayObject(indicies[2]);
-	// GraphicsEngine::drawTriangles(indicies[2]->getNumberOfMaterials(), 0);
-	//GraphicsEngine::clearDepthBuffer();
+	projection.setOrthoLH((float)width * camera.focalLength, (float)height * camera.focalLength, -4, 4);
+	GraphicsEngine::setViewPort(0, 0, width, height);
+	GraphicsEngine::clear(camera.color);
 	GraphicsEngine::clearColorDepthBuffer();
 	
 	std::pair<RenderView*, int> s = ECS::GetComponents<RenderView>(renderViewIndex);
@@ -126,10 +121,10 @@ void RenderManager::renderCamera(Camera& camera, int renderViewIndex) {
 		for(int j = 0; j < number_of_materials; j++) {
 			//set material
 			GraphicsEngine::setShaderProgram(shaders[renderView[i].shader_indexes[j]]);
-			GraphicsEngine::setProjectionMatrix(shaders[renderView[i].shader_indexes[j]], camera.projection);
-			GraphicsEngine::setCameraViewMatrix(shaders[renderView[i].shader_indexes[j]], camera.camView);
+			GraphicsEngine::setProjectionMatrix(shaders[renderView[i].shader_indexes[j]], projection);
+			GraphicsEngine::setCameraViewMatrix(shaders[renderView[i].shader_indexes[j]], camView);
 			
-			GraphicsEngine::setTexture(textures[renderView[i].texture_indexes[j]], shaders[renderView[i].shader_indexes[j]]);
+			GraphicsEngine::setTexture(TextureManager::GetTextureByID(renderView[i].texture_indexes[j]), shaders[renderView[i].shader_indexes[j]]);
 			GraphicsEngine::setVector4( shaders[renderView[i].shader_indexes[j]], Vector4(renderView[i].color.r, renderView[i].color.g, renderView[i].color.b, 1));
 			GraphicsEngine::setMatrix(shaders[renderView[i].shader_indexes[j]], world);
 			
@@ -148,6 +143,5 @@ void RenderManager::Render() {
 		for(int j = 0; j < size; j++) {
 			renderCamera(cameras[j], i);
 		}
-		break;
 	}
 }

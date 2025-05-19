@@ -27,7 +27,8 @@ namespace  GraphicsEngine
 	void setIndexArrayObject(IndexArrayObject* iao);
 	void setVertexArrayObject(VertexArrayObject* vao);
 	void setShaderProgram(Shader* program);
-	void setTexture(Texture* texture, Shader* shader);
+	void setTexture(unsigned int textureID, Shader* shader);
+	void setRenderTargetWindow();
 	
 	void setVector4(Shader* shader, Vector4 vector4);
 	void setMatrix(Shader* shader, Matrix4x4& matrix);

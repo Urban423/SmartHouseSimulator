@@ -11,7 +11,7 @@ public:
 private:
 	void init();
 	void Render();
-	void calculateCameraView(const Transform& camera, Camera& cameraData);
+	Matrix4x4 calculateCameraView(const Transform& camera);
 	void renderCamera(Camera& camera, int renderViewIndex);
 private:
 	static RenderManager* renderManager;
@@ -20,5 +20,4 @@ private:
 	std::vector<VertexArrayObject*> vertexes;
 	std::vector<IndexArrayObject*>  indicies;
 	std::vector<Shader*>   shaders;
-	std::vector<Texture*>  textures;
 };

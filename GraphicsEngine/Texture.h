@@ -7,6 +7,7 @@ public:
 	Texture(const TextureStruct desc) { init(desc); }
 	void init(const TextureStruct desc);
 	
+	inline std::pair<int, int> getSize() { return {width, height}; }
 	unsigned int getID();
 public:
 	unsigned int textureID;

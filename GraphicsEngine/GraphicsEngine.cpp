@@ -68,11 +68,15 @@ void GraphicsEngine::setShaderProgram(Shader* program)
 	glUseProgram(program->getID());
 }
 
-void GraphicsEngine::setTexture(Texture* texture, Shader* shader)
+void GraphicsEngine::setRenderTargetWindow() {
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+}
+
+void GraphicsEngine::setTexture(unsigned int textureID, Shader* shader)
 {
 	unsigned int transformLoc = glGetUniformLocation(shader->getID(), "_MainTex");
 	glActiveTexture(GL_TEXTURE0);
-	glBindTexture(GL_TEXTURE_2D, texture->getID()); 
+	glBindTexture(GL_TEXTURE_2D, textureID); 
 	glUniform1i(transformLoc, 0);
 }
 
