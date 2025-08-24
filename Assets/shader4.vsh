@@ -56,8 +56,6 @@ uniform vec4 _projection[4];
  // main procedure, the original name was vert
 void main()
 {
-
-
     _r0015 = POSITION.x*_transform[0];
     _r0015 = _r0015 + POSITION.y*_transform[1];
     _r0015 = _r0015 + POSITION.z*_transform[2];
@@ -88,8 +86,10 @@ void main()
     _ret_0._uv = TEXCOORD0.xy;
     _ret_0._pos = _r0019;
     _ret_0._normal = _OUT0013._normal1;
-    gl_Position = _r0015;
+    gl_Position = _r0019;
     TEX0.xy = TEXCOORD0.xy;
     TEX1.xyz = _OUT0013._normal1;
     return;
+    TEX0.xy = _ret_0._uv;
+    TEX1.xyz = _ret_0._normal;
 } // main end

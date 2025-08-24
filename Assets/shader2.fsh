@@ -50,6 +50,6 @@ void main()
 	
 	float alpha = smoothBorder(TEX0.xy, 10.0f);
 	if(alpha < 0.1f) { return; }
-	gl_FragColor = vec4(diff_color.xyz, alpha);
+	gl_FragColor = _color;
     return;
 } // main end

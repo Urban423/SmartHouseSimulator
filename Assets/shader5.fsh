@@ -64,6 +64,6 @@ void main()
     _color = texture2D(_MainTex, TEX0.xy);
     _ret_0 = _color*_diffuse;
 	vec4 albedo = _color * diff_color;
-    gl_FragColor = vec4(lightColor * albedo.xyz, _color.w);
+    gl_FragColor = vec4(albedo.xyz, _color.w);
     return;
 } // main end

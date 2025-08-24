@@ -48,10 +48,10 @@ void main()
     vec4 _color;
     _color = texture2D(_MainTex, TEX0.xy);
 	
-	float alpha1 = smoothBorder(vec2(TEX0.x, 0.5f + TEX0.y), 5.0f);
-	float alpha2 = smoothBorder(vec2(TEX0.x, TEX0.y - 0.5f), 5.0f);
+	float alpha1 = smoothBorder(vec2(diff_color.z + TEX0.x, diff_color.y + TEX0.y), 5.0f);
+	float alpha2 = smoothBorder(vec2(TEX0.x - diff_color.z, TEX0.y - diff_color.y), 5.0f);
 	float alpha = max(alpha1, alpha2);
-	if(alpha > 0.4f) { gl_FragColor = vec4(diff_color.xyz, alpha); return; }
-	gl_FragColor = vec4(1.0f, 0.0f, 0.0f, 0.0f);
+	if(smoothstep(0.3, 0.6, alpha) > 0.5f) { discard; }
+	gl_FragColor = vec4(diff_color.x, diff_color.x, diff_color.x, 1.0f);
     return;
 } // main end
