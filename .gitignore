@@ -16,7 +16,7 @@ cmake_install.cmake
 *.swp
 *.bak
 
-#system files
+#System files
 .DS_Store
 Thumb.db
 
