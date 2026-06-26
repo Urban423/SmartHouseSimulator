@@ -21,6 +21,6 @@ private:
 	unsigned int fbo = 0;
 	unsigned int colorTexture = 0;
 	
-	int width = 500;
-	int height = 200;
+	int width = 1980;
+	int height = 1080;
 };

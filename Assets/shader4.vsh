@@ -68,21 +68,30 @@ void main()
     _r0019 = _r0019 + _r0017.y*_projection[1];
     _r0019 = _r0019 + _r0017.z*_projection[2];
     _r0019 = _r0019 + _r0017.w*_projection[3];
-    _TMP28.x = _transform[0].x;
-    _TMP28.y = _transform[0].y;
-    _TMP28.z = _transform[0].z;
-    _r0021 = NORMAL.x*_TMP28;
-    _TMP29.x = _transform[1].x;
-    _TMP29.y = _transform[1].y;
-    _TMP29.z = _transform[1].z;
-    _r0021 = _r0021 + NORMAL.y*_TMP29;
-    _TMP30.x = _transform[2].x;
-    _TMP30.y = _transform[2].y;
-    _TMP30.z = _transform[2].z;
-    _r0021 = _r0021 + NORMAL.z*_TMP30;
-    _TMP3 = dot(_r0021, _r0021);
-    _TMP4 = inversesqrt(_TMP3);
-    _OUT0013._normal1 = _TMP4*_r0021;
+    vec3 axisX;
+    axisX.x = _transform[0].x;
+    axisX.y = _transform[0].y;
+    axisX.z = _transform[0].z;
+    axisX = normalize(axisX);
+
+    vec3 axisY;
+    axisY.x = _transform[1].x;
+    axisY.y = _transform[1].y;
+    axisY.z = _transform[1].z;
+    axisY = normalize(axisY);
+
+    vec3 axisZ;
+    axisZ.x = _transform[2].x;
+    axisZ.y = _transform[2].y;
+    axisZ.z = _transform[2].z;
+    axisZ = normalize(axisZ);
+
+    _r0021 = NORMAL.x * axisX;
+    _r0021 = _r0021 + NORMAL.y * axisY;
+    _r0021 = _r0021 + NORMAL.z * axisZ;
+
+    _r0021 = normalize(_r0021);
+    _OUT0013._normal1 = _r0021;
     _ret_0._uv = TEXCOORD0.xy;
     _ret_0._pos = _r0019;
     _ret_0._normal = _OUT0013._normal1;

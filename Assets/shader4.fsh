@@ -38,7 +38,7 @@ uniform float time;
  // main procedure, the original name was frag
 void main()
 {
-
+    vec3 _LightDir = vec3(0.3, 0.4, 0.2);
     float _diffuse;
     vec4 _color;
 	vec3 morning = vec3(1.0, 0.8, 0.6);
@@ -74,10 +74,12 @@ void main()
 	// итоговые UV — в tile-пространстве
 	vec2 finalUV = (floor(uv) + rotatedUV);
 	
-    _TMP0 = dot(TEX1.xyz, vec3( 0.00000000E+000, 0.00000000E+000, 1.00000000E+000));
-    _diffuse = max(_TMP0, 0.00000000E+000)+ 0.1;
+    vec3 N = normalize(TEX1.xyz);
+    vec3 L = normalize(_LightDir);
+    float ambient = 0.5;
+    float diff = max(dot(N, L), ambient) + ambient;
+    vec3 lighting = lightColor * diff;
     _color = texture2D(_MainTex, finalUV);
-    _ret_0 = _color*_diffuse;
-    gl_FragColor = vec4(lightColor * _ret_0.xyz, _color.w);
+    gl_FragColor = vec4(_color.rgb * lighting, _color.a);
     return;
 } // main end

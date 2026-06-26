@@ -1,41 +1,51 @@
 import subprocess
-import sys
 from pathlib import Path
-from versionManager import create_versioned_archive
+import sys
+import shutil
 
-RUNTIME_DIR = "/workspace/build/OnlineAlpha"
-PROJECT_NAME = "OnlineAlpha"
-PROGRAM_VERSION = "1.0"
-
+ROOT_DIR = Path(__file__).parent.parent.resolve()
 PLATFORM = sys.argv[1] if len(sys.argv) > 1 else "windows"
+DOCKER_BUILD_DIR = Path("/workspace")
+BUILD_DIR = ROOT_DIR / "build"
 
-PROJECT_DIR = Path("/workspace")
-CACHE_FILE = PROJECT_DIR / ".CMakeFiles" / "CMakeCache.txt"
-CMAKELISTS_FILE = PROJECT_DIR / "CMakeLists.txt"
-CMAKEPRESETS_FILE = PROJECT_DIR / "CMakePresets.json"
-CMAKE_DIR = PROJECT_DIR / "cmake"
+def sync_sources():
+    """Синхронизация проекта в volume с помощью rsync"""
+    # Опции:
+    # -a — архивный режим (рекурсивно + сохраняет права, временные метки)
+    # --delete — удаляет лишние файлы в целевой папке
+    # --exclude 'build' — исключаем папку build
+    subprocess.run([
+        "rsync",
+        "-a",
+        "-u",
+        "--delete",
+        "--exclude", "build",
+        "--exclude", ".git",
+        "--exclude", ".CMakeFiles",
+        f"{ROOT_DIR}/",
+        f"{DOCKER_BUILD_DIR}/"
+    ], check=True)
 
-def need_configure() -> bool:
-    if not CACHE_FILE.exists():
-        return True
-    if CMAKELISTS_FILE.stat().st_mtime > CACHE_FILE.stat().st_mtime:
-        return True
-    if CMAKEPRESETS_FILE.stat().st_mtime > CACHE_FILE.stat().st_mtime:
-        return True
-    return False
+def build_inside_docker():
+    # Конфигурация
+    subprocess.run(["cmake", "--preset", PLATFORM], cwd=DOCKER_BUILD_DIR, check=True)
+    # Сборка
+    subprocess.run(["cmake", "--build", "./.CMakeFiles"], cwd=DOCKER_BUILD_DIR, check=True)
+
+def sync_back():
+    docker_build = DOCKER_BUILD_DIR / "build"
+    if docker_build.exists():
+        subprocess.run([
+            "rsync",
+            "-a",
+            "--delete",
+            f"{docker_build}/",
+            f"{BUILD_DIR}/"
+        ], check=True)
 
 def main():
-    if need_configure():
-        print("Running CMake configuration...")
-        subprocess.check_call(["cmake", "--preset", PLATFORM], cwd=PROJECT_DIR)
-    else:
-        print("CMake configuration up to date.")
-
-    print("Building project...")
-    subprocess.check_call(["cmake", "--build", ".CMakeFiles"], cwd=PROJECT_DIR)
-
-    print("Updating version archive...")
-    #create_versioned_archive(RUNTIME_DIR, PROJECT_NAME, PROGRAM_VERSION)
+    print(f"Building for {PLATFORM}...")
+    print("Build finished.")
 
 if __name__ == "__main__":
     main()

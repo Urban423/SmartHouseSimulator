@@ -6,10 +6,8 @@ inline void setSeed(unsigned int value) { srand(value); }
 inline unsigned int random() { return rand(); };
 
 inline float noise(float min, float max) { 
-	static std::random_device rd;
-    static std::mt19937 gen(rd());
-    std::uniform_real_distribution<float> dist(min, max);
-    return dist(gen);
+    float r = random();
+    return min + (r / (float)RAND_MAX) * (max - min);
 }
 
 template<class T = int>

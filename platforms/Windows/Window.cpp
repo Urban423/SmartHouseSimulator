@@ -11,41 +11,20 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
 			win->onDestroy();
 			break;
 		}
-		case WM_ENTERSIZEMOVE: { win->resizeEnter(); break; }
-		case WM_EXITSIZEMOVE : { 
-			win->resizeExit(); 
-			if (wParam == SIZE_RESTORED || wParam == SIZE_MAXIMIZED) {
-				win->setSize();
-			}		
-			break;
-		}
-		case WM_SIZE: { win->setSize(); break; }
 		case WM_GETMINMAXINFO: {
             MINMAXINFO* pMinMax = (MINMAXINFO*)lParam;
             pMinMax->ptMinTrackSize.x = 400;
             pMinMax->ptMinTrackSize.y = 300;
             return 0;
         }
-		case WM_LBUTTONDOWN: {
-			Rect r = win->getInnerSize();
-			float x = (2 * (float)(short)LOWORD(lParam) / r.width()  ) - 1;
-			float y = (-2 * (float)(short)HIWORD(lParam) / r.height()) + 1;
-			if (win->getIES()) win->getIES()->handleMouseClickDown(x, y);
+		case WM_CHAR: {
+			IOSystem::getPlatform().addText((int)wParam);
 			break;
 		}
-		case WM_LBUTTONUP: {
-			Rect r = win->getInnerSize();
-			float x = (2 * (float)(short)LOWORD(lParam) / r.width()  ) - 1;
-			float y = (-2 * (float)(short)HIWORD(lParam) / r.height()) + 1;
-			if (win->getIES()) win->getIES()->handleMouseClickUp(x, y);
+		case WM_KEYDOWN: {
+			IOSystem::getPlatform().addKeyEvent((int)wParam);
 			break;
 		}
-		case WM_ERASEBKGND: return 1;
-		case WM_MOVING: { }
-		case WM_MOVE: { win->setPos(LOWORD(lParam), HIWORD(lParam)); break; 	}
-		case WM_MOUSEWHEEL: { win->getIES()->handleMouseWheel(GET_WHEEL_DELTA_WPARAM(wParam)); break; }
-		//case WM_KEYDOWN: 	{ win->getIES()->handleKeyDown(wParam); break; }
-		case WM_CHAR: { win->getIES()->handleKeyDown((wchar_t)wParam); break; }
 		default: { return DefWindowProc(hwnd, msg, wParam, lParam); }
 	}
 	return DefWindowProc(hwnd, msg, wParam, lParam);
@@ -53,13 +32,9 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
 
 Window::~Window() { DestroyWindow(_hwnd); }
 
-void Window::init(const char* windowName, int width, int height, bool fullscreen)
-{
+void Window::create(const char* windowName, int width, int height, bool fullscreen, bool vsync) {
 	win = this;
-	screen_width  = GetSystemMetrics(SM_CXSCREEN);
-	screen_height = GetSystemMetrics(SM_CYSCREEN);
-	arrowCursor = LoadCursor(NULL, IDC_ARROW);
-	noneCursor = LoadCursor(GetModuleHandle(NULL), MAKEINTRESOURCE(IDI_NONECURSOR));
+	this->vsync = vsync;
 	
 	
 	WNDCLASSEX wc = {};
@@ -74,25 +49,30 @@ void Window::init(const char* windowName, int width, int height, bool fullscreen
 	wc.lpfnWndProc = WndProc;
 	wc.style = 0;
 
-	if (!RegisterClassEx(&wc)) {
-		onDestroy();
-	}
+	if (!RegisterClassEx(&wc)) onDestroy();
 
 	RECT rc = { 0, 0, width, height };
 	AdjustWindowRect(&rc, WS_SYSMENU, false);
 
+	HWND existing = FindWindowA(windowName, nullptr);
+	int posX = 3;
+	int posY = 30;
+	if (existing) {
+		posX = 1000;
+		posY = 30;
+	}
+
 	_hwnd = CreateWindowEx(WS_EX_OVERLAPPEDWINDOW,
 		windowName, windowName,
 		WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX | WS_MAXIMIZEBOX | WS_THICKFRAME,
-		rc.left,  rc.top,
-		rc.right, rc.bottom, NULL, NULL, NULL, NULL);
+		posX, posY,
+		rc.right - rc.left,
+		rc.bottom - rc.top,
+		NULL, NULL, NULL, NULL
+	);
 
-	if (!_hwnd) {
-		onDestroy();
-	}
-	if(fullscreen) {
-		setFullscreen(1);
-	}
+	if (!_hwnd) onDestroy();
+	if(fullscreen)  setFullscreen(1);
 
 	ShowWindow(_hwnd, SW_SHOW);
 	UpdateWindow(_hwnd);
@@ -121,44 +101,32 @@ void Window::init(const char* windowName, int width, int height, bool fullscreen
 	wglMakeCurrent(hDC, hRC);
 	wglSwapIntervalEXT = (PFNWGLSWAPINTERVALEXTPROC)wglGetProcAddress("wglSwapIntervalEXT");
 	setVSync(vsync);
-	
-	GetClientRect(_hwnd, &rc);
-	rect = {(float)rc.left, (float)rc.top, (float)rc.right, (float)rc.bottom};
-	centerX = rect.left + rect.width()  / 2;
-	centerY = rect.top  +  rect.height() / 2;
 }
 
-void Window::setRenderContextNULL() { wglMakeCurrent(NULL, NULL); }
-void Window::setRenderContext() {  wglMakeCurrent(hDC, hRC); }
-
-void Window::handleInput() {
-	MSG msg;
-	while(PeekMessage(&msg, _hwnd, 0, 0, PM_REMOVE)) {
-		if (msg.message == WM_MOUSEMOVE) continue;
-		TranslateMessage(&msg); 
-		DispatchMessage(&msg);
-	}
+Rect Window::getInnerSize() { 
+	RECT rc; 
+	GetClientRect(_hwnd, &rc); 
+	POINT topLeft = {rc.left, rc.top}; 
+	POINT bottomRight = {rc.right, rc.bottom}; 
+	ClientToScreen(_hwnd, &topLeft); 
+	ClientToScreen(_hwnd, &bottomRight); 
+	return { (float)topLeft.x, (float)topLeft.y, (float)bottomRight.x, (float)bottomRight.y };
 }
 
-//windows size block
-void Window::setPos(float x, float y)
-{
-	float width  = rect.width();
-	float height = rect.height();
-	rect = {x, y, x + width, y + height };
-	// centerX = left + width  / 2;
-	// centerY = top  + height / 2;
+std::pair<int, int> Window::getScreenSize() { 
+	int screen_width  = GetSystemMetrics(SM_CXSCREEN);
+	int screen_height = GetSystemMetrics(SM_CYSCREEN);
+	return {screen_width, screen_height};
 }
 
-
-void Window::setFullscreen(const bool state)
-{
+void Window::setFullscreen(const bool state){
 	if(state) {
 		LONG l_WinStyle = GetWindowLong (_hwnd, GWL_STYLE);
 		SetWindowLong(_hwnd, GWL_STYLE,(l_WinStyle | WS_POPUP | WS_MAXIMIZE) & ~(WS_CAPTION | WS_THICKFRAME));
         SetWindowLong(_hwnd, GWL_EXSTYLE, WS_EX_TOPMOST);
 		
 		ShowWindow(_hwnd, SW_MAXIMIZE);
+		auto [screen_width, screen_height] = getScreenSize();
 		SetWindowPos (_hwnd, HWND_TOP, 0, 0, screen_width, screen_height, 0);
 	}
 	else
@@ -169,21 +137,26 @@ void Window::setFullscreen(const bool state)
 	}
 }
 
-
-void Window::setSize() {
+void Window::setSize(int width, int height) {
 	RECT rc;
-	GetClientRect (_hwnd, 	 	   &rc);
+	GetClientRect (_hwnd, &rc);
 	//ClientToScreen(_hwnd, (POINT *)&rc);
-	rect = {(float)rc.left, (float)rc.top, (float)rc.right, (float)rc.bottom};
-	
-	centerX = rect.left + rect.width()  / 2;
-	centerY = rect.top  +  rect.height() / 2;
-	
-	if(getIES())  getIES()->setSize(rect.width(), rect.height());
+}
+
+void Window::setPosition(int x, int y) {
+
+}
+
+std::pair<int, int> Window::getSize() {
+	RECT rc; 
+	GetClientRect(_hwnd, &rc); 
+	POINT topLeft = {rc.left, rc.top}; 
+	POINT bottomRight = {rc.right, rc.bottom}; 
+	ClientToScreen(_hwnd, &topLeft); 
+	ClientToScreen(_hwnd, &bottomRight); 
+	return {bottomRight.x - topLeft.x, bottomRight.y - topLeft.y};
 }
 
 
-
-//system metrics
-Rect Window::screenSize() { return Rect(screen_width, screen_height); }
-void Window::showCursor(const bool show) { SetCursor(show? arrowCursor : noneCursor); }
+// void Window::setRenderContextNULL() { wglMakeCurrent(NULL, NULL); }
+// void Window::setRenderContext() {  wglMakeCurrent(hDC, hRC); }

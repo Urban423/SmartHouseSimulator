@@ -10,6 +10,7 @@ RUN apt-get update && apt-get install -y \
 	curl \
 	tar \
 	unzip \
+	rsync \
 	mingw-w64 \
 	libgl1-mesa-dev \
 	python3 python3-pip \
@@ -17,9 +18,10 @@ RUN apt-get update && apt-get install -y \
 
 WORKDIR /opt
 
-RUN curl -LO https://zlib.net/zlib-1.3.1.tar.gz && \
-	tar -xzf zlib-1.3.1.tar.gz && \
-	rm zlib-1.3.1.tar.gz
+RUN curl -fL -o zlib-1.3.1.tar.gz \
+    https://zlib.net/fossils/zlib-1.3.1.tar.gz && \
+    tar -xzf zlib-1.3.1.tar.gz && \
+    rm zlib-1.3.1.tar.gz
 
 
 WORKDIR /opt/zlib-1.3.1

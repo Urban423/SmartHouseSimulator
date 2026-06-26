@@ -39,7 +39,7 @@ uniform float time;
  // main procedure, the original name was frag
 void main()
 {
-
+    vec3 _LightDir = vec3(0.3, 0.4, 0.2);
     float _diffuse;
     vec4 _color;
 	vec3 morning = vec3(1.0, 0.8, 0.6);
@@ -59,11 +59,12 @@ void main()
     else
         lightColor = mix(evening, night, (dayCycle - 0.75) / 0.25); // Evening → Night
 	
-    _TMP0 = dot(TEX1.xyz, vec3( 0.00000000E+000, 0.00000000E+000, 1.00000000E+000));
-    _diffuse = max(_TMP0, 0.00000000E+000) + 0.1;
+    _TMP0 = dot(normalize(TEX1.xyz), normalize(_LightDir));
+    _diffuse = max(_TMP0, 0.0) + 0.3;
     _color = texture2D(_MainTex, TEX0.xy);
+    vec3 finalLight = lightColor * _diffuse;
     _ret_0 = _color*_diffuse;
 	vec4 albedo = _color * diff_color;
-    gl_FragColor = vec4(lightColor * albedo.xyz, _color.w);
+    gl_FragColor = vec4(albedo.rgb * finalLight, albedo.a);
     return;
 } // main end

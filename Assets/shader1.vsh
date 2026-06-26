@@ -88,7 +88,7 @@ void main()
     _ret_0._uv = TEXCOORD0.xy;
     _ret_0._pos = _r0019;
     _ret_0._normal = _OUT0013._normal1;
-    gl_Position = POSITION;
+    gl_Position = _r0015;
     TEX0.xy = TEXCOORD0.xy;
     TEX1.xyz = _OUT0013._normal1;
     return;

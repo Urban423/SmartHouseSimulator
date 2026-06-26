@@ -13,6 +13,7 @@ public:
 	Vector2(int x, 		int y): x(x), y(y) {};
 	Vector2(long x, 	long y): x(x), y(y) {};
 
+	Vector2& rotate(float radianAngle);
 	float length();
 	float squareLength();
 	Vector2 normalized();
@@ -24,6 +25,7 @@ public:
 	Vector2 operator*(Matrix3x3& matrix);
 	Vector2 operator*=(Matrix3x3& matrix);
 	bool operator<(const Vector2& b) const;
+	bool operator>(const Vector2& b) const;
 	Vector2 operator/(float b);
 	inline Vector2 operator/(const Vector2 b) { return {x / b.x, y / b.y}; }
 	Vector2& operator/=(float b);
@@ -34,6 +36,8 @@ public:
 	const float& operator[](unsigned int index) const;
 	bool operator==(const Vector2& b);
 public:
+	static float DistanceToSegment(const Vector2& a, const Vector2& b, const Vector2& p,
+                        float (*distFunc)(const Vector2&, const Vector2&) = Vector2::Distance);
 	static float Distance(const Vector2& a, const Vector2& b);
 	static float DistanceSquare(const Vector2& a, const Vector2& b);
 	static float angle(const Vector2& v) { return std::atan2(v.y, v.x); }
@@ -45,6 +49,13 @@ public:
 	float y = 0;
 };
 
-inline bool clockwise       (const Vector2& a, const Vector2& b, const Vector2& c) { return ((b.y - a.y) * (c.x - b.x) - (c.y - b.y) * (b.x - a.x)) >= 0;}
-inline bool counterClockwise(const Vector2& a, const Vector2& b, const Vector2& c) { return ((b.y - a.y) * (c.x - b.x) - (c.y - b.y) * (b.x - a.x)) < 0;}
+inline bool clockwise(const Vector2& a, const Vector2& b, const Vector2& c) {
+    return (b.x - a.x)*(c.y - a.y) - (b.y - a.y)*(c.x - a.x) < 0;
+}
+
+inline bool counterClockwise(const Vector2& a, const Vector2& b, const Vector2& c) {
+    return (b.x - a.x)*(c.y - a.y) - (b.y - a.y)*(c.x - a.x) > 0;
+}
 Vector2 operator*(float a, const Vector2& b);
+Vector2 operator-(const Vector2& a, const Vector2& b);
+Vector2 operator+(const Vector2& a, const Vector2& b);

@@ -91,7 +91,7 @@ double fractalNoise(double x, double y, double z, int octaves, double persistenc
 }
 
 // Generate cloud-like texture
-TextureStruct PerlinNoise(const int width, const int height, double scale, int octaves, double persistence, unsigned int seed) {
+TextureStruct PerlinNoise(const int width, const int height, double scale, int octaves, double persistence, float amplitude, unsigned int seed) {
     int* pixels = new int[width * height];
     initializePermutation(seed);
 	double d_width  = static_cast<double>(width);
@@ -100,12 +100,72 @@ TextureStruct PerlinNoise(const int width, const int height, double scale, int o
         for (int x = 0; x < width; ++x) {
             double nx = x / d_width;
             double ny = y / d_height;
-            double value = fractalNoise(nx * scale, ny * scale, 0.0, octaves, persistence);
+            double value = amplitude * fractalNoise(nx * scale, ny * scale, 0.0, octaves, persistence);
             int color = static_cast<int>((value + 1.0) * 127.5);
             pixels[y * width + x] = RGB_TO_INT(color, 0, color);
         }
     }
 	return {width, height, pixels};
+}
+
+Mesh PerlinNoiseMesh(const int width, const int height, double scale, int octaves, double persistence, float amplitude, unsigned int seed) {
+    initializePermutation(seed);
+    Vertex* vertices = new Vertex[width * height];
+    int indexCount = (width - 1) * (height - 1) * 6;
+    int* indices = new int[indexCount];
+    // Create vertices
+    for (int y = 0; y < height; y++) {
+        for (int x = 0; x < width; x++) {
+            double nx = (double)x / (width - 1);
+            double ny = (double)y / (height - 1);
+
+            double h = amplitude * fractalNoise(nx * scale, ny * scale, 0.0, octaves, persistence);
+            int i = y * width + x;
+            vertices[i].pos = Vector3((float)x, (float)h, (float)y);
+            vertices[i].uv = Vector2((float)nx, (float)ny);
+            vertices[i].uv1 = vertices[i].uv;
+            vertices[i].normal = Vector3(0.0f, 1.0f, 0.0f);
+        }
+    }
+
+    // Create indices
+    int k = 0;
+    for (int y = 0; y < height - 1; y++) {
+        for (int x = 0; x < width - 1; x++) {
+            int topLeft     = y * width + x;
+            int topRight    = topLeft + 1;
+            int bottomLeft  = (y + 1) * width + x;
+            int bottomRight = bottomLeft + 1;
+
+            // Triangle 1
+            indices[k++] = topLeft;
+            indices[k++] = topRight;
+            indices[k++] = bottomLeft;
+
+            // Triangle 2
+            indices[k++] = topRight;
+            indices[k++] = bottomRight;
+            indices[k++] = bottomLeft;
+        }
+    }
+
+    for (int y = 1; y < height - 1; y++) {
+        for (int x = 1; x < width - 1; x++) {
+            float hl = vertices[y * width + (x - 1)].pos.y;
+            float hr = vertices[y * width + (x + 1)].pos.y;
+            float hd = vertices[(y - 1) * width + x].pos.y;
+            float hu = vertices[(y + 1) * width + x].pos.y;
+
+            Vector3 normal(hl - hr, 2.0f, hd - hu);
+            vertices[y * width + x].normal = normal.normalized();
+        }
+    }
+
+    unsigned int materialCount = 1;
+    unsigned int* materials = new unsigned int[materialCount];
+    materials[0] = indexCount;
+
+    return Mesh(indices, indexCount, vertices, width * height, materials, materialCount);
 }
 
 // int main() {

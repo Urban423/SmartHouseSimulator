@@ -1,5 +1,6 @@
 #include "Polygon.h"
 #include "Random.h"
+#include "Triangulation.h"
 #include <algorithm>
 #include <math.h>
 namespace Shapes {
@@ -43,6 +44,12 @@ void Polygon::init(std::vector<Vector2>&& points) {
 		
 		return (minAx == minBx) ? (minAy < minBy) : (minAx < minBx);
 	});	
+}
+
+void Polygon::rotate(float angle) {
+	for(int i = 0; i < points.size(); i++) {
+		points[i].rotate(angle);
+	}
 }
 
 bool Polygon::checkPointInside(const Vector2& point) {
@@ -234,5 +241,67 @@ std::vector<Vector2> sortPointsIntoPolygon(std::vector<Vector2>& points) {
         return atan2(a.y - centroid.y, a.x - centroid.x) < atan2(b.y - centroid.y, b.x - centroid.x);
     });
     return points;
+}
+
+#include "Polygon.h"
+#include "Triangulation.h"
+
+Mesh Shapes::Polygon::convertToMesh() {
+	Mesh mesh{};
+	
+	int n = points.size();
+	if (n < 3) {
+		mesh.vertex = nullptr;
+		mesh.index = nullptr;
+		mesh.vertex_size = 0;
+		mesh.index_size = 0;
+		return mesh;
+	}
+
+	mesh.vertex_size = n;
+	mesh.vertex = new Vertex[n];
+	for (int i = 0; i < n; i++) {
+		mesh.vertex[i].pos[0] = points[i].x;
+		mesh.vertex[i].pos[1] = points[i].y;
+		mesh.vertex[i].pos[2] = 0.0f;
+	}
+	
+	mesh.index_size = (n - 2) * 3;
+	mesh.index = new int[mesh.index_size];
+	
+	std::vector<int> index_array(n);
+	for (int i = 0; i < n; i++) index_array[i] = n - i - 1;
+	
+	std::vector<char> removed(n, false);
+	
+	TriangulatePolygon2D(
+		points.data(),
+		(bool*)removed.data(),
+		index_array.data(),
+		n,
+		mesh.index
+	);
+
+	mesh.number_of_materials = 1;
+	mesh.materials = new unsigned int[1];
+	mesh.materials[0] = mesh.index_size;
+	mesh.syncWithGPU();
+	return mesh;
+}
+bool PointInQuadXZ(float x, float z, Vector3 quad[4]) {
+	Vector3 p(x, 0, z);
+    bool positive = false;
+    bool negative = false;
+    for(int i = 0; i < 4; i++) {
+        Vector3 a = quad[i];
+        Vector3 b = quad[(i + 1) % 4];
+        Vector3 edge(b.x - a.x, 0, b.z - a.z);
+        Vector3 toPoint(p.x - a.x, 0, p.z - a.z);
+        float cross = edge.z * toPoint.x - edge.x * toPoint.z;
+        if(cross > 0) positive = true;
+        if(cross < 0) negative = true;
+        if(positive && negative) return false;
+    }
+    return true;
 }
 };

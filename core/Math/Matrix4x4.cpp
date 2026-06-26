@@ -1,20 +1,11 @@
 #include "Matrix4x4.h"
 #include "Vector4.h"
 #include <math.h>
-
-Matrix4x4::Matrix4x4() {}
-
-//Matrix4x4::~Matrix4x4() {}
+#include <cstring>
 
 void Matrix4x4::setIdentity()
 {
-	for(int y = 0; y < 4; y++)
-	{
-		for(int x = 0; x < 4; x++)
-		{
-			mat[y][x] = 0;
-		}
-	}
+	std::memset(mat, 0, sizeof(mat));
 	mat[0][0] = 1;
 	mat[1][1] = 1;
 	mat[2][2] = 1;
@@ -159,15 +150,22 @@ void Matrix4x4::operator *=(const Matrix4x4& matrix)
 	{
 		for(unsigned int j = 0; j < 4; j++)
 		{
-			out.mat[i][j] = \
-			mat[i][0] * matrix.mat[0][j] +
-			mat[i][1] * matrix.mat[1][j] +
-			mat[i][2] * matrix.mat[2][j] +
-			mat[i][3] * matrix.mat[3][j];
+			out.mat[i][j] =
+				mat[0][j] * matrix.mat[i][0] +
+				mat[1][j] * matrix.mat[i][1] +
+				mat[2][j] * matrix.mat[i][2] +
+				mat[3][j] * matrix.mat[i][3];
 		}
 	}
 	
 	*this = out;
+}
+
+
+Matrix4x4 Matrix4x4::operator*(const Matrix4x4 matrix) {
+	Matrix4x4 out = *this;
+	out *= matrix;
+	return out;
 }
 
 void Matrix4x4::setOrthoLH(

@@ -1,7 +1,33 @@
 #include "IOSystem.h"
-#include <Polygon.h>
+#include <Triangulation.h>
 #include "VertexDictionary.h"
 #include <cstdio>
+
+struct VertexWithNormal {
+	int index;
+	int uv_index;
+	Vector3 normal;
+
+	bool operator==(const VertexWithNormal second) {
+		if(this->uv_index == second.uv_index && 
+		  (this->normal.x == second.normal.x) && 
+		  (this->normal.y == second.normal.y) && 
+		  (this->normal.z == second.normal.z)) return 1;
+		return 0;
+	}
+};
+
+
+struct VertexWithoutNormal {
+	int index;
+	int uv_index;
+	int normal_index;
+
+	bool operator==(const VertexWithoutNormal second) {
+		if(this->uv_index == second.uv_index && this->normal_index == second.normal_index) return 1;
+		return 0;
+	}
+};
 
 Mesh createMeshWithIndexNormals(
 	int* indicies_array, int number_of_indicies,
@@ -91,7 +117,7 @@ Mesh createMeshWithIndexNormals(
 		}
 		
 		if(number_of_used_materials > 1) { real_first = startMaterialPointers[*material_indexes_copy]; startMaterialPointers[*material_indexes_copy] += number_of_points * 3 - 6; ++material_indexes_copy; };	
-		TriangulatePolygon(result_vertexes, helpNormal, vector_array, removed_vertexes, indicies_array + first, number_of_points, result_indices + real_first);
+		TriangulatePolygon3D(result_vertexes, helpNormal, vector_array, removed_vertexes, indicies_array + first, number_of_points, result_indices + real_first);
 	
 		real_first += number_of_points * 3 - 6; 
 		first = i;
@@ -105,90 +131,8 @@ Mesh createMeshWithIndexNormals(
 	return {result_indices, real_number_of_indicies, result_vertexes, dictionary.getNumberOfElements(), (unsigned int*)materials_counter, (unsigned int)number_of_used_materials};
 }
 
-Mesh createMeshWithNormals(
-	int* indicies_array, int number_of_indicies,
-	Vector3* Vertexes, int  number_of_vertexes,
-	Vector2* uv_vertexes, int* uv_indexes, int number_of_uv_indexes,
-	Vector3* normals, int normals_length, bool byVertex)
-{
-	//count real number of indecies for trinagles
-	bool* removed_vertexes  = new bool[number_of_vertexes];
-	int* helping_indicies = new int[number_of_indicies];
-	VertexDictionary<VertexWithNormal> dictionary(number_of_vertexes);
-	int real_number_of_indicies = 0;
-	int real_first = 0;
-	int first = 0;
-	int number_of_points;
-	int max_number_of_points_per_polygon = 0;
-	for(int i = 0; i < number_of_indicies; i++)
-	{
-		//check the end of the polygon
-		if(!(indicies_array[i] & 0x80'00'00'00)) {
-			helping_indicies[i] = dictionary.addElement({i, uv_indexes[i], normals[i]}, indicies_array[i]);
-			continue;
-		}
-		helping_indicies[i] = dictionary.addElement({i, uv_indexes[i], normals[i]}, -indicies_array[i] - 1);
-		
-		//get the number of points
-		number_of_points = i - first + 1;
-		if(number_of_points < 3) {first = i + 1; continue;}
-		if(max_number_of_points_per_polygon < number_of_points) { max_number_of_points_per_polygon = number_of_points;}
-		real_number_of_indicies += number_of_points * 3 - 6;
-		first = i + 1;
-	}
-	
-	Vertex* result_vertexes = new Vertex[dictionary.getNumberOfElements()];
-	Vector2* vector_array = new Vector2[max_number_of_points_per_polygon];
-	int* result_indices = new int[real_number_of_indicies];
-	first = 0;
-	int vertex_index = 0;
-	for(int i = 0; i < number_of_indicies; i++)
-	{
-		//check the end of the polygon
-		if(!(indicies_array[i] & 0x80'00'00'00)) {
-			continue;
-		}
-		
-		//prepare data
-		indicies_array[i]++;
-		indicies_array[i] *= -1;
-		i++;
-		
-		//get the number of points
-		number_of_points = i - first;
-		if(number_of_points < 3) {first = i; continue;}
-		memset(removed_vertexes, 0, number_of_points);
-		
-		
-		for(int j = first; j < i; j++)
-		{
-			if(j == helping_indicies[j]) {
-				if(byVertex) {
-					result_vertexes[vertex_index] = {Vertexes[indicies_array[j]], normals[indicies_array[j]], uv_vertexes[uv_indexes[j]]};
-				}
-				else {
-					result_vertexes[vertex_index] = {Vertexes[indicies_array[j]], normals[j], uv_vertexes[uv_indexes[j]]};
-				}
-				indicies_array[j] = vertex_index++;
-			}
-			else {
-				indicies_array[j] = indicies_array[helping_indicies[j]];
-			}
-		}
-		
-		
-		TriangulatePolygon(result_vertexes, normals[i - 1], vector_array, removed_vertexes, indicies_array + first, number_of_points, result_indices + real_first);
-		
-		
-		real_first += number_of_points * 3 - 6; 
-		first = i;
-	}
-	delete[] removed_vertexes;
-	delete[] helping_indicies;
-	delete[] vector_array;
-	
-	return {result_indices, real_number_of_indicies, result_vertexes, dictionary.getNumberOfElements(), nullptr, 0};
-}
+
+
 
 
 Mesh readObject(Node* geometry) {
@@ -241,6 +185,12 @@ Mesh readObject(Node* geometry) {
 	if(NormalsIndex != nullptr) {
 		normal_indexes = NormalsIndex->props[0].IntegerArray;
 	}
+	else {
+		normal_indexes = new int[normals_length];
+		for(int i = 0; i < normals_length; i++) {
+			normal_indexes[i] = i;
+		}
+	}
 	if(MappInfoType != nullptr) {
 		byVertex = MappInfoType->props[0].rawData[2] == 'V';
 	}
@@ -262,14 +212,14 @@ Mesh readObject(Node* geometry) {
 		material_indexes = Materials->props[0].IntegerArray;
 	}
 	
-	Mesh mesh;
-	if(NormalsIndex == nullptr) {
-		mesh = createMeshWithNormals(indicies_array, number_of_indicies, Vertexes, number_of_vertexes, uv_vertexes, uv_indexes, number_of_uv_indexes, normals, normals_length, byVertex);
-	}
-	else {
-		mesh = createMeshWithIndexNormals(indicies_array, number_of_indicies, Vertexes, number_of_vertexes,uv_vertexes,uv_indexes, number_of_uv_indexes,normals, 
-			normal_indexes, normals_length, material_indexes, number_of_materials, byVertex);
-	}
+	Mesh mesh = createMeshWithIndexNormals(
+			indicies_array, number_of_indicies, 
+			Vertexes, number_of_vertexes, 
+			uv_vertexes, uv_indexes, number_of_uv_indexes, 
+			normals, normal_indexes, normals_length, 
+			material_indexes, number_of_materials, 
+		byVertex
+	);
 	delete[] Vertexes;
 	delete[] normals;
 	delete[] uv_vertexes;
@@ -287,6 +237,13 @@ std::vector<Mesh> IOSystem::readFBX(const char* filename) {
 	std::vector<Mesh> meshes;
 	for(int i = 0; i < geometries.size(); i++) {
 		meshes.push_back(readObject(geometries[i]));
+		// printf("Mesh %d: %d vertexes, %d indecies\n", i, meshes.back().vertex_size, meshes.back().index_size);
+		// for(int i =0 ; i < meshes.back().vertex_size; i++) {
+		// 	printf("%f %f %f\t%f %f %f\t%f %f\n", 
+		// 		meshes.back().vertex[i].pos.x, meshes.back().vertex[i].pos.y, meshes.back().vertex[i].pos.z, 
+		// 		meshes.back().vertex[i].normal.x, meshes.back().vertex[i].normal.y, meshes.back().vertex[i].normal.z,
+		// 		meshes.back().vertex[i].uv.x, meshes.back().vertex[i].uv.y);
+		// }
 	}
 	return meshes;
 }

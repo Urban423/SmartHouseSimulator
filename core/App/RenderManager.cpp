@@ -2,157 +2,210 @@
 #include "IOSystem.h"
 #include "TextureManager.h"
 #include "ECS.h"
-#include "Timer.h"
+#include "MeshManager.h"
+#include "MaterialManager.h"
+#include "PerlinNoise.h"
+
 #include <cstdio>
 
-RenderManager* RenderManager::renderManager = new RenderManager();
+RenderManager *RenderManager::renderManager = new RenderManager();
 
-Matrix4x4 RenderManager::calculateCameraView(const Transform& camera) {
-	Matrix4x4 temp;
-	//temp.setRotation(player.transform->rotation);
-	
-	Matrix4x4 cam;
-	cam.setIdentity();
-	cam.setRotation(camera.rotation);
-	//cam *= temp;
-	
-	temp.setIdentity();
-	temp.setTranslation(camera.position);
-	cam *= temp;
-	cam.inverse();
-	return cam;
-}
-
-
-void RenderManager::init() {
-	//create texture
-	const char* textureFiles[] = {
-		"floorWooden1.bmp",
-		"Tile.bmp",
-		"Tile1.bmp",
-		"Floortex.bmp",
-		"Grass.bmp",
-		"Ghost.bmp",
-		"Ghost1.bmp",
-		"LightBulb.bmp",
-		"LightBulbOff.bmp",
-		"MotionSensor.bmp",
-		"Tree.bmp",
-		"Bush.bmp",
-		"Sofa.bmp",
+void RenderManager::init()
+{
+	// create texture
+	const char *textureFiles[] = {
+		"floorWooden1.bmp",	  // 0
+		"Tile.bmp",			  // 1
+		"Tile1.bmp",		  // 2
+		"Floortex.bmp",		  // 3
+		"Grass.bmp",		  // 4
+		"Ghost.bmp",		  // 5
+		"Ghost1.bmp",		  // 6
+		"LightBulb.bmp",	  // 7
+		"LightBulbOff.bmp",	  // 8
+		"MotionSensor.bmp",	  // 9
+		"Tree.bmp",			  // 10
+		"Bush.bmp",			  // 11
+		"Sofa.bmp",			  // 12
+		"urok_17_opengl.bmp", // 13
 	};
-	for(int i = 0; i < sizeof(textureFiles) / sizeof(const char*); i++) {
-		TextureStruct assa  = IOSystem::readBMP(textureFiles[i]);
+	for (int i = 0; i < sizeof(textureFiles) / sizeof(const char *); i++)
+	{
+		TextureStruct assa = IOSystem::readBMP(textureFiles[i]);
 		TextureManager::CreateTexture(assa);
 	}
 
-	//create shader
-	const char* shadersFiles[] = {
+	// create shader
+	const char *shadersFiles[] = {
 		"shader.vsh",
 		"shader.fsh",
-		
+
 		"shader2.vsh",
 		"shader2.fsh",
-		
+
 		"shader3.vsh",
 		"shader3.fsh",
-		
+
 		"shader4.vsh",
 		"shader4.fsh",
-		
+
 		"shader5.vsh",
 		"shader5.fsh",
+
+		"textShader.vsh",
+		"textShader.fsh",
 	};
-	for(int i = 0; i < sizeof(shadersFiles) / sizeof(const char*); i+=2) {
-		shaders.push_back( GraphicsEngine::createShaderProgram({openCFile(shadersFiles[i]).getPtr(), openCFile(shadersFiles[i + 1]).getPtr()}) );
+	for (int i = 0; i < sizeof(shadersFiles) / sizeof(const char *); i += 2)
+	{
+		shaders.push_back(GraphicsEngine::createShaderProgram({openCFile(shadersFiles[i]).getPtr(), openCFile(shadersFiles[i + 1]).getPtr()}));
 	}
-	
-	//create shape points
-	const char* files[] = {
+
+	// create shape points
+	const char *files[] = {
 		"Plane.fbx",
-		"HouseMap.fbx",
+		"cube.fbx",
+		"sphere.fbx",
 	};
-	for(int i = 0; i < sizeof(files) / sizeof(const char*); i++) {
+	for (int i = 0; i < sizeof(files) / sizeof(const char *); i++)
+	{
 		std::vector<Mesh> meshes = IOSystem::readFBX(files[i]);
-		for(int j = 0; j < meshes.size(); j++) {
-			indicies.push_back(GraphicsEngine::createIndexArrayObject({ (unsigned int*)meshes[j].index,  (unsigned int)meshes[j].index_size, meshes[j].number_of_materials, meshes[j].materials }));
-			vertexes.push_back(GraphicsEngine::createVertexArrayObject({ meshes[j].vertex, sizeof(Vertex), (unsigned int)meshes[j].vertex_size }));
-			//freeMesh(mesh);
-		}
 	}
-	
-	//Mesh plane = PerlinNoiseMesh(100, 100, 6.0f, 0, 0.9f, 13);
-	//vertexes_indexes2 = GraphicsEngine::createIndexArrayObject({ (unsigned int*)plane.index,  (unsigned int)plane.index_size });
-	//vertexes2 = GraphicsEngine::createVertexArrayObject({ plane.vertex, sizeof(Vertex), (unsigned int)plane.vertex_size });
 }
 
-
-void RenderManager::renderCamera(Camera& camera, int renderViewIndex) {
+void RenderManager::renderCamera(Camera &camera, int renderViewIndex)
+{
 	TextureManager::SetRenderTarget(camera.frameBufferIndex);
-	
-	Matrix4x4 camView = calculateCameraView(camera.object.transform);
+	// Matrix4x4 camView = calculateCameraView(camera.object.transform);
+	Matrix4x4 camView = worlds[camera.object.getID()];
+	camView.inverse();
 	Matrix4x4 projection;
 	projection.setIdentity();
 	int width, height;
-	if(camera.frameBufferIndex == -1) { 
-		std::tie(width, height) = IOSystem::getOutputInstance().getSize();
-	} 
-	else {
-		 std::tie(width, height) = TextureManager::GetTextureSize(camera.frameBufferIndex);
+	if (camera.frameBufferIndex == -1) {
+		std::tie(width, height) = IOSystem::getWindowSize();
 	}
-	projection.setOrthoLH((float)width * camera.focalLength, (float)height * camera.focalLength, -4, 4);
+	else {
+		std::tie(width, height) = TextureManager::GetTextureSize(camera.frameBufferIndex);
+	}
+	if(camera.perpective)
+		projection.setPerspectiveFovLH(3.14f / 4, (float)width / height, 0.01f, 1000);
+	else
+		projection.setOrthoLH((float)width * camera.focalLength, (float)height * camera.focalLength, -4, 4);
 	GraphicsEngine::setViewPort(0, 0, width, height);
 	GraphicsEngine::clear(camera.color);
 	GraphicsEngine::clearColorDepthBuffer();
-	
-	std::pair<RenderView*, int> s = ECS::GetComponents<RenderView>(renderViewIndex);
-	RenderView* renderView = s.first;
-	for(int i = s.second - 1; i > -1; i--) {
-		if(renderView[i].enabled == false) { continue; }
-		
-		//set shape
-		GraphicsEngine::setVertexArrayObject(vertexes[renderView[i].mesh_index]);
-		GraphicsEngine::setIndexArrayObject(indicies[renderView[i].mesh_index]);
-		
-		//calculate transform
-		Transform& transform = renderView[i].object.transform;
-		Matrix4x4 world, temp;
-		world.setIdentity();
-		world.setScale(transform.scale);
-		
-		temp.setIdentity();
-		temp.setTranslation(transform.position);
-		world *= temp;
-		
-		//render object
-		int number_of_materials = std::min(indicies[renderView[i].mesh_index]->getNumberOfMaterials(), (unsigned int)renderView[i].shader_indexes.size());
-		number_of_materials = std::min((int)renderView[i].texture_indexes.size(), number_of_materials);
+
+	auto [renderView, size] = ECS::GetComponents<RenderView>();
+	for (int i = size - 1; i > -1; i--)
+	{
+		if (renderView[i].layout != renderViewIndex) continue;
+		if (renderView[i].enabled == false) continue;
+
+		// set shape
+		unsigned int number_of_mats = MeshManager::setMeshById(renderView[i].mesh_index);
+
+		// render object
+		int number_of_materials = Math::Min(number_of_mats, (unsigned int)renderView[i].materals.size());
 		int offset = 0;
-		for(int j = 0; j < number_of_materials; j++) {
-			//set material
-			GraphicsEngine::setShaderProgram(shaders[renderView[i].shader_indexes[j]]);
-			GraphicsEngine::setTime(shaders[renderView[i].shader_indexes[j]], Time::time);
-			GraphicsEngine::setProjectionMatrix(shaders[renderView[i].shader_indexes[j]], projection);
-			GraphicsEngine::setCameraViewMatrix(shaders[renderView[i].shader_indexes[j]], camView);
-			
-			GraphicsEngine::setTexture(TextureManager::GetTextureByID(renderView[i].texture_indexes[j]), shaders[renderView[i].shader_indexes[j]]);
-			GraphicsEngine::setVector4( shaders[renderView[i].shader_indexes[j]], Vector4(renderView[i].color.r, renderView[i].color.g, renderView[i].color.b, 1));
-			GraphicsEngine::setMatrix(shaders[renderView[i].shader_indexes[j]], world);
-			
-			int number_of_triangles = indicies[renderView[i].mesh_index]->getMaterialSize(j);
-			GraphicsEngine::drawTriangles(number_of_triangles, (void*)(offset * sizeof(int)));
+		for (int j = 0; j < number_of_materials; j++)
+		{
+			Material material = MaterialManager::Get(renderView[i].materals[j]);
+			int shader_index = material.shader_indexes;
+			int texture_index = material.texture_index;
+			int texture_index1 = material.texture_index1;
+			int mesh_index = renderView[i].mesh_index;
+			Shader *shader_ptr = shaders[shader_index];
+			// set material
+			GraphicsEngine::setShaderProgram(shader_ptr);
+			GraphicsEngine::setTime(shader_ptr, Time::time);
+			GraphicsEngine::setProjectionMatrix(shader_ptr, projection);
+			GraphicsEngine::setCameraViewMatrix(shader_ptr, camView);
+
+			GraphicsEngine::setTexture(TextureManager::GetTextureByID(texture_index), shader_ptr);
+			GraphicsEngine::setVector4(shader_ptr, material.color.ToVector4());
+			GraphicsEngine::setMatrix(shader_ptr, worlds[renderView[i].object.getID()]);
+
+			int number_of_triangles = MeshManager::getNumberOfPolygonsByMaterialID(mesh_index, j);
+			GraphicsEngine::drawTriangles(number_of_triangles, (void *)(offset * sizeof(int)));
 			offset += number_of_triangles;
 		}
 	}
+
+	auto [textViews, count] = ECS::GetComponents<TextView>();
+	int text_shader_index = 5;
+	int atlas_index = 13;
+	GraphicsEngine::setShaderProgram(shaders[text_shader_index]);
+	GraphicsEngine::setProjectionMatrix(shaders[text_shader_index], projection);
+	GraphicsEngine::setCameraViewMatrix(shaders[text_shader_index], camView);
+	GraphicsEngine::setTexture(TextureManager::GetTextureByID(atlas_index), shaders[text_shader_index]);
+	for (int i = count - 1; i > -1; i--)
+	{
+		if (textViews[i].layout != renderViewIndex)
+			continue;
+		if (textViews[i].enabled == false)
+			continue;
+
+		// set shape
+		int mesh_index = textViews[i].getId();
+
+		// set material
+		unsigned int number_of_mats = MeshManager::setMeshById(mesh_index);
+		GraphicsEngine::setMatrix(shaders[text_shader_index], worlds[textViews[i].object.getID()]);
+		int number_of_triangles = MeshManager::getNumberOfPolygonsByMaterialID(mesh_index, 0);
+		GraphicsEngine::drawTriangles(number_of_triangles, (void *)(0 * sizeof(int)));
+	}
+
+	//2d ui
+
 }
 
-void RenderManager::Render() { 
-	GraphicsEngine::disable3D();
-	int groupCounter = ECS::GetComponentGroupSize<Camera>();
-	for(int i = groupCounter - 1; i >= 0; i--) {
-		auto[cameras, size] = ECS::GetComponents<Camera>(i);
-		for(int j = 0; j < size; j++) {
-			renderCamera(cameras[j], i);
+// #include <chrono>
+// float delta = 0;
+// int n = 0;
+void RenderManager::Render()
+{
+	// calcualte matrxies
+	auto [hierarchy, hierarchySize] = ECS::GetHierarchy().rebuild();
+	auto [parents, parentsSize] = ECS::GetHierarchy().getParents();
+	for (int i = 0; i < hierarchySize; i++)
+	{
+		int objectID = hierarchy[i];
+		if (worlds.size() <= objectID)
+		{
+			worlds.resize(objectID + 1);
+		}
+		Transform transform = ECS::GetComponent<Transform>(objectID);
+		Matrix4x4 S, R, T;
+		S.setIdentity();
+		S.setScale(transform.scale);
+
+		R.setIdentity();
+		R.setRotation(transform.rotation);
+
+		T.setIdentity();
+		T.setTranslation(transform.position);
+
+		Matrix4x4 local = T * R * S;
+		int parent = parents[objectID];
+		if (parent != -1) {
+			worlds[objectID] = worlds[parent] * local;
+		}
+		else {
+			worlds[objectID] = local;
 		}
 	}
+
+	GraphicsEngine::disable3D();
+	auto [cameras, size] = ECS::GetComponents<Camera>();
+	// auto start = std::chrono::high_resolution_clock::now();
+	for (int i = 0; i < size; i++)
+	{
+		renderCamera(cameras[i], cameras[i].renderLayout);
+	}
+
+	// auto end = std::chrono::high_resolution_clock::now();
+	// float ms = std::chrono::duration<float, std::milli>(end - start).count();
+	// delta += ms;
+	// n += 1;
+	// printf("Render time: %.3f ms\n", delta / n);
 }

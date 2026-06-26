@@ -2,14 +2,13 @@
 #include <umath.h>
 #include "Transform.h"
 
-class Input {
-public:
-	static char mouseScrollDelta;
-};
+// class Input {
+// public:
+// 	static char mouseScrollDelta;
+// };
 
-class InputEventSystem: public Component, public InputEventSystemI {
+class InputEventSystem: public Component {
 public:
-	InputEventSystem(Object obj, bool enabled) { object = obj; enabled = enabled;}
 	void Update();
 	void setSize(int width, int height);
 	void handleMouseClickDown(float x, float y);

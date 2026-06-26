@@ -6,8 +6,7 @@
 
 class Scene {
 public:
-	void Start();
-	void Update();
-private:
-	Object controlablePanels;
+	static void Start();
+	static void Update();
+	static void FixedUpdate();
 };

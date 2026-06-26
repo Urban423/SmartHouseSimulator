@@ -9,5 +9,6 @@ public:
 		if(navMeshAgent.pathStatus == PathComplete) {
 			navMeshAgent.SetDestination(NavMeshSystem::GetRandomPoint());
 		}
+		object.transform.rotation *= Quaternion::FromEuler(Time::fixedDeltaTime, 0, 0);
 	};
 };

@@ -20,7 +20,7 @@ namespace  GraphicsEngine
 	bool init();
 	void enable3D();
 	void disable3D();
-	void clear(const Color& color);
+	void clear(const Color color);
 	void clearDepthBuffer();
 	void clearColorDepthBuffer();
 	void setViewPort(const unsigned int xOffset, const unsigned int yOffset, const unsigned int width, const unsigned int height);
@@ -34,6 +34,7 @@ namespace  GraphicsEngine
 	void setMatrix(Shader* shader, Matrix4x4& matrix);
 	void setProjectionMatrix(Shader* shader, Matrix4x4& matrix);
 	void setCameraViewMatrix(Shader* shader, Matrix4x4& matrix);
+	//void setText(Shader* shader, TextRender& text);
 	void setTime(Shader* shader, float time);
 	void drawTriangles(unsigned int vertexCount, void* offset);
 	

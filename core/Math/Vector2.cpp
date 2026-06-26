@@ -49,7 +49,7 @@ char Vector2::linesItersection(Vector2& intersectPointA, Vector2& intersectPoint
 }
 
 Vector2 Vector2::minDistToLine(Vector2& a, Vector2& b, Vector2& point, float (*distFunc)(const Vector2&, const Vector2&)) {
-        const int SAMPLES = 100; // Increase for more accuracy
+        const int SAMPLES = 100;
         Vector2 closest = a;
         float minDist = distFunc(point, a);
 
@@ -68,6 +68,21 @@ Vector2 Vector2::minDistToLine(Vector2& a, Vector2& b, Vector2& point, float (*d
     }
 
 
+float Vector2::DistanceToSegment(const Vector2& a, const Vector2& b, const Vector2& p,
+                        float (*distFunc)(const Vector2&, const Vector2&)) 
+{
+    Vector2 ab = b - a;
+    Vector2 ap = p - a;
+
+    float abLenSq = ab.squareLength();
+    if (abLenSq == 0.0f) return distFunc(a, p);
+
+    float t = Vector2::dotProduct(ap, ab) / abLenSq;
+    t = std::max(0.0f, std::min(1.0f, t));
+
+    Vector2 closest = a + ab * t;
+    return distFunc(p, closest);
+}
 
 
 
@@ -77,14 +92,24 @@ float Vector2::length()
 	return sqrt(x * x + y * y);
 }
 
+Vector2& Vector2::rotate(float angle) {
+	angle *= 3.14f / 180.0f;
+	float sinAngle = sin(angle);
+	float cosAngle = cos(angle);
+	float tmpX = x;
+	x = x * sinAngle + y * cosAngle;
+	y = y * sinAngle - tmpX * cosAngle;
+	return *this;
+}
+
 float Vector2::squareLength()
 {
 	return x * x + y * y;
 }
 
 
-Vector2 Vector2::normalized()
-{
+Vector2 Vector2::normalized() {
+	if(x == 0 && y == 0) { return Vector2(0, 0); }
 	float _length = 1.0f / sqrt(x * x + y * y);
 	return Vector2(x * _length, y * _length);
 }
@@ -118,9 +143,12 @@ Vector2 Vector2::operator*=(Matrix3x3& matrix) {
 	return *this;
 }
 
-bool Vector2::operator<(const Vector2& b) const
-{
+bool Vector2::operator<(const Vector2& b) const {
 	return x < b.x || (x == b.x && y < b.y);
+}
+
+bool Vector2::operator>(const Vector2& b) const {
+	return x > b.x || (x == b.x && y > b.y);
 }
 
 Vector2 Vector2::operator/(float b)
@@ -167,4 +195,12 @@ const float& Vector2::operator[](unsigned int index) const { if(index) { return 
 Vector2 operator*(float a, const Vector2& b)
 {
 	return Vector2(a * b.x, a * b.y);
+}
+
+Vector2 operator-(const Vector2& a, const Vector2& b) {
+	return Vector2(a.x - b.x, a.y - b.y);
+}
+
+Vector2 operator+(const Vector2& a, const Vector2& b) {
+	return Vector2(a.x + b.x, a.y + b.y);
 }

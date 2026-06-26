@@ -5,26 +5,7 @@
 #include "Quaternion.h"
 #include "Matrix4x4.h"
 
-#define RGB_TO_INT(r, g, b) ((r << 16) + (g << 8) + (b))
-
-struct Vertex
-{
-	Vector3 pos;
-	Vector3 normal;
-	Vector2 uv;
-};
-
-struct Mesh
-{
-	int* index;
-	int index_size;
-	
-	Vertex* vertex;
-	int vertex_size;
-	
-	unsigned int* materials;
-	unsigned int  number_of_materials;
-};
+#define RGB_TO_INT(r, g, b) (((r) << 16) + ((g) << 8) + (b))
 
 struct TextureStruct
 {
@@ -33,17 +14,32 @@ struct TextureStruct
 	int* pixels;
 };
 
-void freeMesh(Mesh& mesh);
-
-
-
-inline float clamp(float a, float b, float value) {
-	if(value < a) {
+namespace Math {
+	inline float Clamp(float a, float b, float value) {
+		if(value < a) return a;
+		if(value > b) return b;
+		return value;
+	}
+	template<class T>
+	inline T Max(T a, T b) {
+		if(a < b) return b;
 		return a;
 	}
-	if(value > b) {
-		return b;
+	template<class T>
+	inline T Min(T a, T b) {
+		if(a > b) return b;
+		return a;
 	}
+};
+
+inline float EuclideanDistance(const Vector2& a, const Vector2& b) { return (b - a).length(); }
+inline float EuclideanDistanceSq(const Vector2& a, const Vector2& b) { return (b - a).squareLength(); }
+inline float ManhattanDistance(const Vector2& a, const Vector2& b) { return fabs(b.x - a.x) + fabs(b.y - a.y);}
+inline float ChebyshevDistance(const Vector2& a, const Vector2& b) { return Math::Max(fabs(b.x - a.x), fabs(b.y - a.y)); }
+
+inline float clamp(float a, float b, float value) {
+	if(value < a) return a;
+	if(value > b) return b;
 	return value;
 }
 
@@ -61,23 +57,3 @@ inline float Q_rsqrt( float number )
 	conv.f *= threehalfs - x2 * conv.f * conv.f;
 	return conv.f;
 }
-
-
-
-
-
-class InputEventSystemI {
-public:
-	virtual void setSize(int width, int height) = 0;
-	virtual void handleMouseClickDown(float x, float y) = 0;
-	virtual void handleMouseClickUp(float x, float y) = 0;
-	virtual void handleMouseWheel(char delta) = 0;
-	virtual void handleKeyDown(int key) = 0;
-};
-
-
-class AppI {
-public:
-	virtual void enterResizingMode() = 0;
-	virtual void  exitResizingMode() = 0;
-};
