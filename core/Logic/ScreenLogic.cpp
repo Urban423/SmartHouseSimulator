@@ -78,9 +78,9 @@ rectsCollisionData getCollisionPoints(Vector3 posA, Vector3 scaleA, Vector3 posB
 
 void ScreenLogic::resizeWindows(int width, int height)
 {
-	auto [renderViews, size] = ECS::GetComponents<RenderView>();
-	if (size == 0) return;
-	for (int i = 1; i < size; i++) {
+	Span<RenderView> renderViews = ECS::GetComponents<RenderView>();
+	if (!renderViews.size()) return;
+	for (int i = 1; i < renderViews.size(); i++) {
 		TextureManager::ResizeFrameBuffer(
 			MaterialManager::Get(renderViews[i].materals[0]).texture_index,
 			renderViews[i].object.transform.scale.x * width,
@@ -301,10 +301,9 @@ void ScreenLogic::update()
 
 Object ScreenLogic::findArea(float x, float y)
 {
-	auto [screenBlocks, size] = ECS::GetComponents<ScreenBlock>();
-	if (size == 0)
-		return Object();
-	for (int i = 0; i < size; i++)
+	Span<ScreenBlock> screenBlocks = ECS::GetComponents<ScreenBlock>();
+	if (!screenBlocks.size()) return Object();
+	for (int i = 0; i < screenBlocks.size(); i++)
 	{
 		float posX = screenBlocks[i].object.transform.position.x;
 		float posY = screenBlocks[i].object.transform.position.y;
@@ -356,8 +355,8 @@ Vector4 ScreenLogic::fillArea(Vector2 center, int axis)
 	int centerRight = 0;
 	float minDistLeft = std::numeric_limits<float>::max();
 	float minDistRight = std::numeric_limits<float>::max();
-	auto [screenBlocks, size] = ECS::GetComponents<ScreenBlock>();
-	for (int i = 0; i < size; i++)
+	Span<ScreenBlock> screenBlocks = ECS::GetComponents<ScreenBlock>();
+	for (int i = 0; i < screenBlocks.size(); i++)
 	{
 		if (!checkAxis(screenBlocks[i].object.transform, center, otherAxis))
 			continue;

@@ -1,204 +1,453 @@
 #include "NetworkManager.h"
 #include "TimeSystem.h"
 
-void NetworkEndpoint::sendDirectMessage(int id, MessageType type, const void* data, size_t size, int relID) {
-    auto& buffer = connections[id].directBuffer;
-    MessageHeader header{};
-    header.type = type;
-    header.reliableId = relID;
-    header.size = static_cast<int>(size);
-    size_t oldSize = buffer.size();
-    buffer.resize(oldSize + sizeof(MessageHeader) + size);
-    memcpy(buffer.data() + oldSize, &header, sizeof(header));
-    if(size > 0) memcpy(buffer.data() + oldSize + sizeof(header), data, size);
-}
+bool TransportLayer::open() {
+    if (csocket != INVALID_SOCKET) return true;
+    if (!WinSock::getInstance().init()) return false;
 
-void NetworkEndpoint::sendReliable(int id, MessageType type, const void* data, size_t size) {
-    int relID = reliableId++;
-    ReliablePacket packet{};
-    packet.reliableId = relID;
-    packet.connectionID = id;
-    packet.lastSendTick = Time::tick;
-    packet.attemptNumber = 1;
-    packet.type = type;
-    packet.size = static_cast<int>(size);
-    packet.data.resize(size);
-    if(size > 0) memcpy(packet.data.data(), data, size);
-    reliablePackets.push_back(packet);
-
-    sendDirectMessage(id, type, data, size, relID);
-}
-
-void NetworkEndpoint::sendMessage(MessageType type, const void* data, size_t size) {
-    MessageHeader header{};
-    header.type = type;
-    header.reliableId = -1;
-    header.size = static_cast<int>(size);
-    size_t oldSize = broadcastBuffer.size();
-    broadcastBuffer.resize(oldSize + sizeof(MessageHeader) + size);
-    memcpy(broadcastBuffer.data() + oldSize, &header, sizeof(header));
-    if(size > 0) memcpy(broadcastBuffer.data() + oldSize + sizeof(header), data, size);
-}
-
-void NetworkEndpoint::send() {
-    PacketHeader* header = reinterpret_cast<PacketHeader*>(broadcastBuffer.data());
-    header->tick = Time::tick;
-    header->id = packetId++;
-    header->broadcastSize = broadcastBuffer.size() - sizeof(PacketHeader);
-    for(int i = 0; i < connections.size(); i++) {
-        header->directSize = connections[i].directBuffer.size();
-        broadcastBuffer.resize(sizeof(PacketHeader) + header->broadcastSize + connections[i].directBuffer.size());
-        header = reinterpret_cast<PacketHeader*>(broadcastBuffer.data());
-        if(connections[i].directBuffer.size() > 0) 
-            memcpy(broadcastBuffer.data() + sizeof(PacketHeader) + header->broadcastSize, connections[i].directBuffer.data(), connections[i].directBuffer.size());
-        sendto(сsocket, broadcastBuffer.data(), static_cast<int>(broadcastBuffer.size()), 0, reinterpret_cast<sockaddr*>(&connections[i].address), sizeof(connections[i].address));
-        connections[i].directBuffer.clear();
+    csocket = ::socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+    if (csocket == INVALID_SOCKET) {
+        return false;
     }
-    broadcastBuffer.resize(sizeof(PacketHeader));
+    u_long mode = 1;
+    if (ioctlsocket(csocket, FIONBIO, &mode) == SOCKET_ERROR) {
+        closesocket(csocket);
+        csocket = INVALID_SOCKET;
+        return false;
+    }
+    return true;
 }
 
+bool TransportLayer::bindPort(int port) {
+    if (!open()) return false;
 
+    sockaddr_in addr{};
+    addr.sin_family = AF_INET;
+    addr.sin_addr.s_addr = INADDR_ANY;
+    addr.sin_port = htons(port);
+    return ::bind(csocket, reinterpret_cast<sockaddr*>(&addr), sizeof(addr)) != SOCKET_ERROR;
+}
 
-
-
-
-
-
-
-void NetworkEndpoint::receive() {
-    std::vector<char> buffer(4096);
-    sockaddr_in sender{};
-    int senderSize = sizeof(sender);
-    while(true)
-    {
-        int received = recvfrom(сsocket, buffer.data(), static_cast<int>(buffer.size()), 0, reinterpret_cast<sockaddr*>(&sender), &senderSize);
-        if(received < sizeof(PacketHeader)) break;
-        if(received == SOCKET_ERROR) {
-            int err = WSAGetLastError();
-            if(err == WSAEWOULDBLOCK) break;
-            break;
-        }
-        PacketHeader* packet = reinterpret_cast<PacketHeader*>(buffer.data());
-        if(packet->broadcastSize + packet->directSize + sizeof(PacketHeader) != received) break;
-
-        int senderID = getTargetId(sender);
-        char* cursor = buffer.data() + sizeof(PacketHeader);
-        size_t broadcastEnd =  reinterpret_cast<size_t>(cursor) + packet->broadcastSize;
-        while(reinterpret_cast<size_t>(cursor) < broadcastEnd) {
-            processMessage(reinterpret_cast<MessageHeader*>(cursor), cursor, senderID, sender, received, buffer);
-        }
-
-        size_t directEnd = reinterpret_cast<size_t>(cursor) + packet->directSize;
-        while(reinterpret_cast<size_t>(cursor) < directEnd) {
-            processMessage(reinterpret_cast<MessageHeader*>(cursor), cursor, senderID, sender, received, buffer);
-        }
+void TransportLayer::close() {
+    if (csocket != INVALID_SOCKET) {
+        closesocket(csocket);
+        csocket = INVALID_SOCKET;
     }
 }
 
-void NetworkEndpoint::processMessage(MessageHeader* msg, char*& cursor, int& senderID, sockaddr_in& sender, int received, std::vector<char>& buffer) {
-        if(senderID == -1 && msg->type != MessageType::Connect) return;
-        switch(msg->type) {
-            case(MessageType::Connect): {
-                if(senderID == -1) senderID = createConnection(sender);
-                sendReliable(senderID, MessageType::ConnectAccept, &senderID, sizeof(senderID));
-                break;
-            }
-            case(MessageType::Confirm): {
-                //delete rel
-                for(size_t i = 0; i < reliablePackets.size(); i++) {
-                    if(reliablePackets[i].reliableId == msg->reliableId) {
-                        reliablePackets[i] = std::move(reliablePackets.back());
-                        reliablePackets.pop_back();
-                        break;
-                    }
-                }
-                cursor += sizeof(MessageHeader) + msg->size;
-                return;
-            }
-            case(MessageType::Disconnect): {
-                removeConnection(senderID);
-                break;
-            }
-        }
 
-        if(msg->reliableId != -1) {
-            sendDirectMessage(senderID, MessageType::Confirm, nullptr, 0, msg->reliableId);
-            auto& c = connections[senderID];
-            if(wasReceived(c, msg->reliableId)) return;
-            markReceived(c, msg->reliableId);
-        }
 
-        char* data = cursor + sizeof(MessageHeader);
-        if(data + msg->size > buffer.data() + received) return;
+bool SessionLayer::process(RawPacket& rawPacket, SessionPacket& out) {
+    bool isNewPeer = false;
 
-        onMessage(msg->type, data, msg->size, senderID);
-        cursor += sizeof(MessageHeader) + msg->size;
-}
-
-void NetworkEndpoint::updateReliable() {
-    for(size_t i = 0; i < reliablePackets.size();) {
-        int connectionID = reliablePackets[i].connectionID;
-        if(reliablePackets[i].attemptNumber >= RELIABLE_MAX_ATTEMPTS) {
-            sendDirectMessage(connectionID, MessageType::Disconnect, nullptr, 0);
-            removeConnection(connectionID);
-            continue;
-        }
-        if(Time::tick - reliablePackets[i].lastSendTick > RELIABLE_TIMEOUT) {
-            sendDirectMessage(reliablePackets[i].connectionID, reliablePackets[i].type, reliablePackets[i].data.data(), reliablePackets[i].size, reliablePackets[i].reliableId);
-            reliablePackets[i].lastSendTick = Time::tick;
-            reliablePackets[i].attemptNumber++;
-        }
-        i++;
+    int id = getPeer(rawPacket.address);
+    if (id == -1) {
+        id = createPeer(rawPacket.address);
+        isNewPeer = true;
     }
+    ecs.GetComponent<LastSeenComponent>(id).tick = Time::tick;
+
+    out.peerID = id;
+    out.data = rawPacket.data;
+    out.size = rawPacket.size;
+    return isNewPeer;
 }
 
-int NetworkEndpoint::getTargetId(sockaddr_in& address) {
-    for(size_t i = 0; i < connections.size(); i++) {
-        if(connections[i].address.sin_addr.s_addr == address.sin_addr.s_addr && connections[i].address.sin_port == address.sin_port) {
-            return i;
+void SessionLayer::process(OutSessionPacket& session, OutPacket& out) {
+    out.address = ecs.GetComponent<AddressComponent>(session.peerID).address;
+
+    out.part1 = session.part1;
+    out.size1 = session.size1;
+
+    out.part2 = session.part2;
+    out.size2 = session.size2;
+
+    out.part3 = session.part3;
+    out.size3 = session.size3;
+}
+
+bool SessionLayer::popPeer(int& peerID) {
+    int currentTick = Time::tick;
+    Span<LastSeenComponent> lastSeen = ecs.GetComponents<LastSeenComponent>();
+
+    while (index < lastSeen.size()) {
+        if (currentTick - lastSeen[index].tick > TIMEOUT) {
+            peerID = ecs.GetEntity(lastSeen[index]);
+            return true;
+        }
+        ++index;
+    }
+    return false;
+}
+
+
+int SessionLayer::createPeer(const char* ip, int port, bool& isNew) {
+    sockaddr_in addr{};
+    addr.sin_family = AF_INET;
+    addr.sin_port = htons(port);
+    inet_pton(AF_INET, ip, &addr.sin_addr);
+    
+    isNew = false;
+    int id = getPeer(addr);
+    if (id == -1) {
+        isNew = true;
+        id = createPeer(addr);
+    }
+    ecs.GetComponent<LastSeenComponent>(id).tick = Time::tick;
+    return id;
+}
+
+int SessionLayer::createPeer(const sockaddr_in& address) {
+    int peerID = ecs.create();
+    ecs.AddComponent<AddressComponent>(peerID).address = address;
+    ecs.AddComponent<LastSeenComponent>(peerID).tick = Time::tick;
+    ecs.AddComponent<directComponent>(peerID);
+    ecs.AddComponent<ReliableComponent>(peerID);
+    return peerID;
+}
+
+int SessionLayer::getPeer(const sockaddr_in& address) const {
+    Span<AddressComponent> addresses = ecs.GetComponents<AddressComponent>();
+    for (int i = 0; i < addresses.size(); ++i) {
+        const AddressComponent& component = addresses[i];
+        if (component.address.sin_addr.s_addr == address.sin_addr.s_addr && component.address.sin_port == address.sin_port) {
+            return ecs.GetEntity(component);
         }
     }
     return -1;
 }
 
-int NetworkEndpoint::createConnection(sockaddr_in& address) {
-    Connection c{};
-    c.address = address;
-    c.lastReceiveTick = Time::tick;
-    c.connected = true;
-    connections.push_back(std::move(c));
-    return connections.size() - 1;
-}
 
-void NetworkEndpoint::removeConnection(int id) {
-    int lastID = connections.size() - 1;
 
-    for(size_t i = 0; i < reliablePackets.size();) {
-        if(reliablePackets[i].connectionID == id) {
-            reliablePackets[i] = std::move(reliablePackets.back());
-            reliablePackets.pop_back();
-        }
-        else {
-            if(reliablePackets[i].connectionID == lastID) reliablePackets[i].connectionID = id;
-            i++;
-        }
+
+
+
+
+
+
+void FragmentLayer::processFragment(SessionPacket& sessionPacket) {
+    if (sessionPacket.size < sizeof(FragmentHeader)) { printf("erro\n"); return; }
+
+    auto* fh = (FragmentHeader*)sessionPacket.data;
+
+    size_t idx = getSlotIndex(fh->packetId);
+    ReassemblySlot& slot = slots[idx];
+    if (slot.packetId != fh->packetId) {
+        slot.packetId = fh->packetId;
+        slot.expectedCount = fh->count;
+        slot.receivedCount = 0;
+        slot.receivedBytes = 0;
+        slot.peerID = sessionPacket.peerID;
+
+        slot.mask.clear();
+        slot.mask.resize(fh->count, false);
+
+        size_t size = 0;
+        if (__builtin_mul_overflow((size_t)fh->count, (size_t)CHUNK, &size)) return;
+
+        slot.data.clear();
+        slot.data.resize(size);
     }
 
-    if(id != lastID) {
-        connections[id] = std::move(connections[lastID]);
+    int offset = (fh->index - 1) * CHUNK;
+    int headerSize = sizeof(FragmentHeader);
+    int dataSize = sessionPacket.size - headerSize;
+
+    memcpy(slot.data.data() + offset, sessionPacket.data + headerSize, dataSize);
+    if (!slot.mask[fh->index - 1]) {
+        slot.mask[fh->index - 1] = 1;
+        slot.receivedCount++;
     }
-    connections.pop_back();
+
+    slot.receivedBytes += dataSize;
+    // printf("packet: %d %d %d\n", slot.receivedCount, slot.receivedBytes, slot.expectedCount);
+    if (slot.receivedCount == slot.expectedCount) {
+        SessionPacket out;
+
+        out.data = slot.data.data();
+        out.size = slot.receivedBytes;
+        out.peerID = slot.peerID;
+
+        readyPackets.push_back(out);
+        slot.packetId = -1;
+    }
 }
 
-void NetworkEndpoint::markReceived(Connection& c, int id) {
-    c.reliableHistory[c.reliableIndex] = id;
-    c.reliableIndex++;
-    if(c.reliableIndex >= 5) c.reliableIndex = 0;
+bool FragmentLayer::pullPacket(SessionPacket& out) {
+    if (readyPackets.empty()) return false;
+
+    out = readyPackets.front();
+    readyPackets.pop_front();
+    return true;
 }
 
-bool NetworkEndpoint::wasReceived(Connection& c, int id) {
-    for(int i = 0; i < 5; i++) {
-        if(c.reliableHistory[i] == id) return true;
+bool FragmentLayer::getFragmentPacket(OutSessionPacket& out)  {
+    if (sentTotal >= totalSize) return false;
+    out = {};
+
+    int remaining = CHUNK;
+    int took = 0;
+
+    out.peerID = packet.peerID;
+    fragementPacketHeader.fragmentHeader.index++;
+    fragementPacketHeader.fragmentHeader.count = (int)((totalSize + CHUNK - 1) / CHUNK);
+    
+    if (fragementPacketHeader.fragmentHeader.index == 1) {
+        out.part1 = &fragementPacketHeader;
+        out.size1 = sizeof(FragementPacketHeader);
+        took += sizeof(FragmentHeader);
+        remaining -= took;
+    } else {
+        out.part1 = &fragementPacketHeader.fragmentHeader;
+        out.size1 = sizeof(FragmentHeader);
+    }
+
+    int available = packet.size2 - offset2;
+    int take = std::min(available, remaining);
+    if (take > 0) {
+        out.part2 = (char*)packet.part2 + offset2;
+        out.size2 = take;
+        offset2 += take;
+        remaining -= take;
+        took += take;
+    }
+
+    available = packet.size3 - offset3;
+    take = std::min(available, remaining);
+    if (take > 0) {
+        out.part3 = (char*)packet.part3 + offset3;
+        out.size3 = take;
+        offset3 += take;
+        remaining -= take;
+        took += take;
+    }
+
+    fragementPacketHeader.fragmentHeader.dataSize = took;
+
+    sentTotal += took;
+    return true;
+}
+
+
+
+
+
+
+
+bool PacketLayer::process(SessionPacket& sessionPacket, Packet& out) {
+    if(sessionPacket.size < sizeof(PacketHeader)) return false;
+
+    PacketHeader header;
+    memcpy(&header, sessionPacket.data, sizeof(PacketHeader));
+    // printf("packet %d %d\n", header.broadcastSize + header.directSize + sizeof(PacketHeader), sessionPacket.size);
+    if(header.broadcastSize + header.directSize + sizeof(PacketHeader) != sessionPacket.size) return false;
+
+    // printf("packet size: %d\n", header.broadcastSize + header.directSize);
+    out.data = sessionPacket.data + sizeof(PacketHeader);
+    out.size = header.broadcastSize + header.directSize;
+    out.senderID = sessionPacket.peerID;
+    out.id = header.id;
+    out.tick = header.tick;
+    out.directSize = header.directSize;
+    out.broadcastSize = header.broadcastSize;
+    return true;
+}
+
+bool PacketLayer::build(int peerID, OutSessionPacket& out) {
+    directComponent& direct = ecs.GetComponent<directComponent>(peerID);
+    size_t globalSize = globalSection.size();
+    size_t directSize = direct.directSection.size();
+
+    if (globalSize == 0 && directSize == 0) return false;
+
+    direct.header.tick = Time::tick;
+    direct.header.id = packetId++;
+    direct.header.broadcastSize = globalSize;
+    direct.header.directSize = directSize;
+
+
+    out.peerID = peerID;
+    out.part1 = &direct.header;
+    out.size1 = (unsigned long)sizeof(PacketHeader);
+
+    out.part2 = globalSection.data();
+    out.size2 = (unsigned long)globalSection.size();
+
+    out.part3 = direct.directSection.data();
+    out.size3 = (unsigned long)direct.directSection.size();
+    return true;
+}
+
+void PacketLayer::writeToPeer(int peerID, const char* header, int headerSize, const char* data, int dataSize) {
+    // if (!data || dataSize == 0) return;
+    directComponent& direct = ecs.GetComponent<directComponent>(peerID);
+
+    const size_t oldSize = direct.directSection.size();
+    const size_t totalSize = oldSize + headerSize + dataSize;
+    if (totalSize > direct.directSection.max_size()) return;
+
+    direct.directSection.resize(totalSize);
+    char* dst = direct.directSection.data() + oldSize;
+
+    std::memcpy(dst, header, headerSize);
+    if(dataSize > 0) std::memcpy(dst + headerSize, data, dataSize);
+}
+
+void PacketLayer::writeGlobal(const char* header, int headerSize, const char* data, int dataSize) {
+    // if (!data || dataSize == 0) return;
+
+    size_t oldSize = globalSection.size();
+    size_t totalSize = oldSize + headerSize + dataSize;
+    if (totalSize > globalSection.max_size()) return;
+
+    globalSection.resize(totalSize);
+    char* dst = globalSection.data() + oldSize;
+
+    std::memcpy(dst, header, headerSize);
+    if(dataSize > 0) std::memcpy(dst + headerSize, data, dataSize);
+}
+
+
+
+
+
+
+bool MessageLayer::pull(MessageView& out) {
+    if (remaining <= 0) return false;
+    if (remaining < sizeof(MessageHeader)) return false;
+
+    MessageHeader header;
+    memcpy(&header, cursor, sizeof(MessageHeader));
+    // printf("MessageHeader size: %d, reamining: %d\n", header.size, remaining);
+    if (header.size < 0) return false;
+    if (remaining < sizeof(MessageHeader) + header.size) return false;
+    // printf("MessageHeader2 size: %d, reamining: %d\n", header.size, remaining);
+
+    out.header = header;
+    out.data = cursor + sizeof(MessageHeader);
+    out.senderID = currentPacket.senderID;
+
+    int messageSize = sizeof(MessageHeader) + header.size;
+    cursor += messageSize;
+    remaining -= messageSize;
+
+    return true;
+}
+
+void MessageLayer::begin(Packet& packet) {
+    currentPacket = packet;
+    cursor = packet.data;
+    remaining = packet.size;
+}
+
+void MessageLayer::buildHeader(int size, char userData, MessageHeader& out) {
+    out.size = size + sizeof(ProtocolHeader);
+    out.type = userData;
+}
+
+
+
+
+
+
+ProcessResult ProtocolLayer::process(MessageView& out, ProtocolSideEffect& side) {
+    if (out.header.size < sizeof(ProtocolHeader)) return ProcessResult::Consume;
+    const ProtocolHeader* header = reinterpret_cast<const ProtocolHeader*>(out.data);
+
+    out.data += sizeof(ProtocolHeader);
+    out.header.size -= sizeof(ProtocolHeader);
+
+    switch (header->type) {
+        case MessageType::Confirm: {
+            ReliableComponent& reliableComponent = ecs.GetComponent<ReliableComponent>(out.senderID);
+            for (size_t i = 0; i < reliableComponent.messages.size(); ++i) {
+                if (reliableComponent.messages[i].protocol.reliableId == header->reliableId) {
+                    side.reliableDelivered = true;
+                    side.deliveredPeerID = out.senderID;
+                    side.deliveredReliableID = header->reliableId;
+
+                    reliableComponent.messages[i] = std::move(reliableComponent.messages.back());
+                    reliableComponent.messages.pop_back();
+                    break;
+                }
+            }
+            return ProcessResult::Consume;
+        }
+
+        case MessageType::Reliable: {
+            side.sendConfirm = true;
+            side.deliveredReliableID = header->reliableId;
+
+            int diff = header->reliableId - baseId;
+            if (diff <= 0) {
+                return ProcessResult::Consume;
+            }
+            if (diff >= RELIABLE_INBOX_WINDOW) {
+                // return ProcessResult::Consume;
+            }
+            uint64_t bit = 1ULL << diff;
+            if (receivedMask & bit) {
+                return ProcessResult::Consume;
+            }
+            receivedMask |= bit;
+
+            return ProcessResult::Pass;
+        }
+
+        default: break;
+    }
+
+    return ProcessResult::Pass;
+}
+
+void ProtocolLayer::buildHeader(MessageHeader& message, MessageType type, int peerID, const char* data, int size, ProtocolHeader& out) {
+    out.type = type;
+    out.reliableId = ++nextReliableId;
+
+    if(type == MessageType::Reliable && peerID != -1) {
+        ReliableMessage reliableMessage;
+        reliableMessage.protocol = out;
+        reliableMessage.message = message;
+        reliableMessage.lastSendTick = Time::tick;
+        reliableMessage.attemptNumber = 1;
+        reliableMessage.peerID = peerID;
+        reliableMessage.data.resize(size);
+        memcpy(reliableMessage.data.data(), data, size);
+
+        auto& comp = ecs.GetComponent<ReliableComponent>(peerID);
+        comp.messages.push_back(reliableMessage);
+    }
+}
+
+bool ProtocolLayer::popResend(ProtocolMessage& out) {
+    auto components = ecs.GetComponents<ReliableComponent>();
+    const size_t compCount = components.size();
+    if (compCount == 0) return false;
+    size_t startComp = rrComponentIndex;
+
+    for (size_t c = rrComponentIndex; c < compCount; c++) {
+        auto& messages = components[c].messages;
+        if (messages.empty()) continue;
+
+        size_t startMsg = (c == 0) ? rrMessageIndex : 0;
+        for (size_t m = startMsg; m < messages.size(); m++) {
+            auto& msg = messages[m];
+            if (Time::tick - msg.lastSendTick > RELIABLE_TIMEOUT) {
+                msg.attemptNumber++;
+                msg.lastSendTick = Time::tick;
+
+                out.attemps = msg.attemptNumber;
+                out.size = msg.data.size();
+                out.data = msg.data.data();
+                out.sendToPeerID = msg.peerID;
+                out.message = msg.message;
+                out.protocol = msg.protocol;
+
+                rrComponentIndex = c;
+                rrMessageIndex = m;
+                return true;
+            }
+        }
     }
     return false;
 }
@@ -208,97 +457,146 @@ bool NetworkEndpoint::wasReceived(Connection& c, int id) {
 
 
 
-
-
-
-
-
-
-
-
-
-void NetworkManager::host(int port) {
-    networkMode = NetworkMode::Host;
-    server.host(port);
-}
-
-void NetworkManager::connect(const char* ip, int port) {
-    networkMode = NetworkMode::Client;
-    client.connectToServer(ip, port);
-}
-
-void NetworkManager::disconnect() {
-    switch (networkMode)
-    {
-        case NetworkMode::Host:
-            server.sendMessage(MessageType::Disconnect, nullptr, 0);
-            break;
-        case NetworkMode::Client:
-            client.sendMessage(MessageType::Disconnect, nullptr, 0);
-            break;
-        default:
-            break;
-    }
-    networkMode = NetworkMode::Offline;
-}
-
-
-
-void NetworkClient::connectToServer(const char* ip, int port) {
-    WSADATA wsa;
-    WSAStartup(MAKEWORD(2, 2), &wsa);
-
-    сsocket = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
-    if(сsocket == INVALID_SOCKET) return;
-
-    u_long mode = 1;
-    ioctlsocket(сsocket, FIONBIO, &mode);
-
-    sockaddr_in server{};
-    server.sin_family = AF_INET;
-    server.sin_port = htons(port);
-    inet_pton(AF_INET, ip, &server.sin_addr);
-    serverID = createConnection(server);
-    sendReliable(serverID, MessageType::Connect, nullptr, 0);
-}
-
-void NetworkClient::onMessage(MessageType type, char* data, size_t size, int senderID) {
-    switch(type) {
-        case MessageType::Snapshot: {
-            printf("snapshot received\n");
-            break;
+void NetworkManager::receive() {
+    RawPacket raw;
+    raw.data = recvBuffer;
+    while (transportLayer.receive(raw)) {
+        SessionPacket session;
+        if (sessionLayer.process(raw, session)) {
+            pushEvent(NetworkEventType::Connected, session.peerID, -1);
         }
-        case MessageType::ConnectAccept:
-        {
-            printf("connected\n");
-            break;
-        }
+
+        fragmentLayer.processFragment(session);
     }
 }
 
+bool NetworkManager::pullMessage(MessageView& out) {
+    while (true) {
+        if (!messageLayer.pull(out)) {
+            SessionPacket sessionPacket;
+            if (!fragmentLayer.pullPacket(sessionPacket)) return false;
 
-void NetworkServer::host(int port) {
-    WSADATA wsa;
-    WSAStartup(MAKEWORD(2, 2), &wsa);
+            Packet packet;
+            if (!packetLayer.process(sessionPacket, packet)) return false;
+            
+            messageLayer.begin(packet);
+            continue;
+        }
 
-    сsocket = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
-    if(сsocket == INVALID_SOCKET) return;
+        ProtocolSideEffect side;
+        ProcessResult action = protocolLayer.process(out, side);
+        // printf("protocolLayer size: %d, side.reliableDelivered %d, side.sendConfirm %d\n", out.header.size, side.reliableDelivered, side.sendConfirm);
+        if (side.reliableDelivered) {
+            pushEvent(NetworkEventType::ReliableDelivered, side.deliveredPeerID, side.deliveredReliableID);
+            side.reliableDelivered = false;
+        }
+        if (side.sendConfirm) {
+            HeaderBuffer headerBuffer;
+            messageLayer.buildHeader(0, 0, headerBuffer.message);
+            protocolLayer.buildHeader(headerBuffer.message, MessageType::Confirm, -1, nullptr, 0, headerBuffer.protocol);
+            headerBuffer.protocol.reliableId = side.deliveredReliableID;
 
-    u_long mode = 1;
-    ioctlsocket(сsocket, FIONBIO, &mode);
-
-    sockaddr_in addr{};
-    addr.sin_family = AF_INET;
-    addr.sin_addr.s_addr = INADDR_ANY;
-    addr.sin_port = htons(port);
-    bind(сsocket, (sockaddr*)&addr, sizeof(addr));
+            packetLayer.writeToPeer(out.senderID, (char*)&headerBuffer, sizeof(HeaderBuffer), nullptr, 0);
+            side.sendConfirm = false;
+        }
+        // printf("Message perfin size: %d\n", out.header.size);
+        if (action == ProcessResult::Consume) continue;
+        // printf("Message final size: %d\n", out.header.size);
+        return true;
+    }
 }
 
-void NetworkServer::onMessage(MessageType type, char* data, size_t size, int senderID) {
-    switch(type) {
-        case MessageType::Input: {
-            printf("input received\n");
-            break;
+void NetworkManager::pushMessage(const char* data, int size, char userData) {
+    HeaderBuffer headerBuffer;
+    messageLayer.buildHeader(size, userData, headerBuffer.message);
+    protocolLayer.buildHeader(headerBuffer.message, MessageType::None, -1, data, size, headerBuffer.protocol);
+
+    packetLayer.writeGlobal((char*)&headerBuffer, sizeof(HeaderBuffer), (char*)data, size);
+}
+
+void NetworkManager::pushDirectMessage(const char* data, int size, char userData, int peerID) {
+    HeaderBuffer headerBuffer;
+    messageLayer.buildHeader(size, userData, headerBuffer.message);
+    protocolLayer.buildHeader(headerBuffer.message, MessageType::None, peerID, data, size, headerBuffer.protocol);
+
+    packetLayer.writeToPeer(peerID, (char*)&headerBuffer, sizeof(HeaderBuffer), (char*)data, size);
+}
+
+int NetworkManager::pushReliableMessage(const char* data, int size, char userData, int peerID) {
+    HeaderBuffer headerBuffer;
+    messageLayer.buildHeader(size, userData, headerBuffer.message);
+    protocolLayer.buildHeader(headerBuffer.message, MessageType::Reliable, peerID, data, size, headerBuffer.protocol);
+
+    packetLayer.writeToPeer(peerID, (char*)&headerBuffer, sizeof(HeaderBuffer), (char*)data, size);
+    return headerBuffer.protocol.reliableId;
+}
+
+int NetworkManager::pushReliableMessage(const char* data, int size, char userData, const char* id, int port) {
+    bool isNew;
+    int peerID = sessionLayer.createPeer(id, port, isNew);
+    if(isNew) pushEvent(NetworkEventType::Connected, peerID, -1);
+    return pushReliableMessage(data, size, userData, peerID);
+}
+
+void NetworkManager::send() {
+    Span<directComponent> directs = ecs.GetComponents<directComponent>();
+    for (auto& direct: directs) {
+        int peerID = ecs.GetEntity(direct);
+        
+        OutSessionPacket outSessionPacket;
+        if(!packetLayer.build(peerID, outSessionPacket)) continue;
+
+        fragmentLayer.setOutSessionPacket(outSessionPacket);
+        
+        OutSessionPacket frag;
+        while (fragmentLayer.getFragmentPacket(frag)) {
+            OutPacket netPacket;
+            sessionLayer.process(frag, netPacket);
+            transportLayer.send(netPacket);
         }
+
+        direct.directSection.clear();
     }
+    packetLayer.clearGlobal();
+}
+
+void NetworkManager::update() {
+    int peerToDelete;
+    while(sessionLayer.popPeer(peerToDelete)) {
+        pushEvent(NetworkEventType::Disconnected, peerToDelete, -1);
+        ecs.destroy(peerToDelete);
+    }
+
+    protocolLayer.beginResendCycle();
+    ProtocolMessage protocolMessage;
+    while(protocolLayer.popResend(protocolMessage)) {
+        if(protocolMessage.attemps > RELIABLE_MAX_ATTEMPS) {
+            ecs.destroy(protocolMessage.sendToPeerID);
+            continue;
+        }
+        pushEvent(NetworkEventType::ReliableFailed, protocolMessage.sendToPeerID, protocolMessage.protocol.reliableId);
+
+        HeaderBuffer headerBuffer;
+        headerBuffer.message = protocolMessage.message;
+        headerBuffer.protocol = protocolMessage.protocol;
+        packetLayer.writeToPeer(protocolMessage.sendToPeerID, (char*)&headerBuffer, sizeof(HeaderBuffer), (char*)protocolMessage.data, protocolMessage.size);
+    }
+
+    // int count = 0;
+    // for(int i = 0; i < 32; i++) {
+    //     if(fragmentLayer.slots[i].packetId != -1) count++;
+    // }
+    // if(count > 0) printf(" fragmentLayer.slots.size() %d\n", count);
+}
+
+bool NetworkManager::pullEvent(NetworkEvent& out) {
+    if(events.empty()) return false;
+
+    out = std::move(events.front());
+    events.pop_front();
+    return true; 
+}
+
+void NetworkManager::pushEvent(NetworkEventType type, int peerID, int reliableID) {
+    events.push_back({type, peerID, reliableID});
 }

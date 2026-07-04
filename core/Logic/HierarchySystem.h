@@ -11,6 +11,7 @@ public:
     std::pair<int *, int> rebuild();
     inline std::pair<int *, int> getParents() { return {parents.data(), (int)parents.size()}; }
     inline int getParent(int objectID) { return parents[objectID]; }
+    const std::vector<int>& getChildren(int objectID) const;
 
 private:
     std::vector<int> parents;
@@ -19,6 +20,12 @@ private:
     std::vector<int> sortedByLevels;
     bool dirty = true;
 };
+
+inline const std::vector<int>& HierarchySystem::getChildren(int objectID) const {
+    static const std::vector<int> empty;
+    if (objectID < 0 || objectID >= children.size()) return empty;
+    return children[objectID];
+}
 
 inline void HierarchySystem::addObject(int objectID)
 {

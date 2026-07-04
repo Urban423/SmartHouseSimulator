@@ -21,6 +21,7 @@ public:
 	Object(int id, Transform &transform) : id(id), transform(transform) {};
 	Object(const Object &other) : id(other.id), transform(other.transform) {};
 
+	inline bool valid() { return id != -1; }
 	inline bool operator==(const int value) { return id == value; }
 	inline bool operator==(const Object &obj) { return id == obj.id; }
 	inline bool operator!=(const Object &obj) { return id != obj.id; }
@@ -40,7 +41,7 @@ public:
 	void setParent(Object parent);
 	void setParent(int parentID);
 	Object getParent();
-
+	Object getChild(int index);
 public:
 	Transform &transform;
 
@@ -115,6 +116,21 @@ private:
 	Mesh mesh;
 	bool dirty = true;
 };
+
+
+
+
+struct NetworkIdentity: Component {
+public:
+    NetworkIdentity() : id(nextID++) {}
+	int getID() { return id; }
+private:
+	inline static int nextID = 0;
+    int id;
+};
+
+
+
 
 struct Button : public Component
 {

@@ -11,11 +11,10 @@ void App::onCreate() {
 void App::onUpdate() {
 	while(IOSystem::getWindow().isRunning()) 
 	{
-		if(NetworkManager::getInstance().networkMode == NetworkMode::Host) NetworkManager::getInstance().server.receive();
-		else if(NetworkManager::getInstance().networkMode == NetworkMode::Client) NetworkManager::getInstance().client.receive();
+		NetworkManager::getInstance().receive();
 		server.update();
 		client.update();
-		if(NetworkManager::getInstance().networkMode == NetworkMode::Host) NetworkManager::getInstance().server.send();
-		else if(NetworkManager::getInstance().networkMode == NetworkMode::Client) NetworkManager::getInstance().client.send();
+		NetworkManager::getInstance().update();
+		NetworkManager::getInstance().send();
 	}
 }

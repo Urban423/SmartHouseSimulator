@@ -95,25 +95,25 @@ void RenderManager::renderCamera(Camera &camera, int renderViewIndex)
 	GraphicsEngine::clear(camera.color);
 	GraphicsEngine::clearColorDepthBuffer();
 
-	auto [renderView, size] = ECS::GetComponents<RenderView>();
-	for (int i = size - 1; i > -1; i--)
+	Span<RenderView> renderViews = ECS::GetComponents<RenderView>();
+	for (int i = renderViews.size() - 1; i > -1; i--)
 	{
-		if (renderView[i].layout != renderViewIndex) continue;
-		if (renderView[i].enabled == false) continue;
+		if (renderViews[i].layout != renderViewIndex) continue;
+		if (renderViews[i].enabled == false) continue;
 
 		// set shape
-		unsigned int number_of_mats = MeshManager::setMeshById(renderView[i].mesh_index);
+		unsigned int number_of_mats = MeshManager::setMeshById(renderViews[i].mesh_index);
 
 		// render object
-		int number_of_materials = Math::Min(number_of_mats, (unsigned int)renderView[i].materals.size());
+		int number_of_materials = Math::Min(number_of_mats, (unsigned int)renderViews[i].materals.size());
 		int offset = 0;
 		for (int j = 0; j < number_of_materials; j++)
 		{
-			Material material = MaterialManager::Get(renderView[i].materals[j]);
+			Material material = MaterialManager::Get(renderViews[i].materals[j]);
 			int shader_index = material.shader_indexes;
 			int texture_index = material.texture_index;
 			int texture_index1 = material.texture_index1;
-			int mesh_index = renderView[i].mesh_index;
+			int mesh_index = renderViews[i].mesh_index;
 			Shader *shader_ptr = shaders[shader_index];
 			// set material
 			GraphicsEngine::setShaderProgram(shader_ptr);
@@ -123,7 +123,7 @@ void RenderManager::renderCamera(Camera &camera, int renderViewIndex)
 
 			GraphicsEngine::setTexture(TextureManager::GetTextureByID(texture_index), shader_ptr);
 			GraphicsEngine::setVector4(shader_ptr, material.color.ToVector4());
-			GraphicsEngine::setMatrix(shader_ptr, worlds[renderView[i].object.getID()]);
+			GraphicsEngine::setMatrix(shader_ptr, worlds[renderViews[i].object.getID()]);
 
 			int number_of_triangles = MeshManager::getNumberOfPolygonsByMaterialID(mesh_index, j);
 			GraphicsEngine::drawTriangles(number_of_triangles, (void *)(offset * sizeof(int)));
@@ -131,14 +131,14 @@ void RenderManager::renderCamera(Camera &camera, int renderViewIndex)
 		}
 	}
 
-	auto [textViews, count] = ECS::GetComponents<TextView>();
+	Span<TextView> textViews = ECS::GetComponents<TextView>();
 	int text_shader_index = 5;
 	int atlas_index = 13;
 	GraphicsEngine::setShaderProgram(shaders[text_shader_index]);
 	GraphicsEngine::setProjectionMatrix(shaders[text_shader_index], projection);
 	GraphicsEngine::setCameraViewMatrix(shaders[text_shader_index], camView);
 	GraphicsEngine::setTexture(TextureManager::GetTextureByID(atlas_index), shaders[text_shader_index]);
-	for (int i = count - 1; i > -1; i--)
+	for (int i = textViews.size() - 1; i > -1; i--)
 	{
 		if (textViews[i].layout != renderViewIndex)
 			continue;
@@ -196,9 +196,9 @@ void RenderManager::Render()
 	}
 
 	GraphicsEngine::disable3D();
-	auto [cameras, size] = ECS::GetComponents<Camera>();
+	Span<Camera> cameras = ECS::GetComponents<Camera>();
 	// auto start = std::chrono::high_resolution_clock::now();
-	for (int i = 0; i < size; i++)
+	for (int i = 0; i < cameras.size(); i++)
 	{
 		renderCamera(cameras[i], cameras[i].renderLayout);
 	}

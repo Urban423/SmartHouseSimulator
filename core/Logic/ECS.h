@@ -1,213 +1,127 @@
 #pragma once
 #include <stack>
+#include "ECSCore.h"
 #include "Transform.h"
 #include "UIManager.h"
 #include "HierarchySystem.h"
 #define TRANSFORM_ARRAY_SIZE 300
 
 class Object;
-
-class ComponentManager
-{
+class ECS {
 public:
-	template <class T>
-	inline void init() { sizeOfComponent = sizeof(T); }
-
-	template <class T>
-	inline T &getComponent(int objectID)
-	{
-		int index = objectsInfo[objectID];
-		T *ptr = reinterpret_cast<T *>(&data[0] + index * sizeof(T));
-		return *ptr;
-	}
-
-	inline void deleteComponent(int objectID)
-	{
-		if (objectID >= objectsInfo.size())
-			return;
-		int index = objectsInfo[objectID];
-		if (index == -1)
-			return;
-
-		int removedIndex = index;
-		int lastIndex = counter - 1;
-		if (removedIndex != lastIndex)
-		{
-			std::memcpy(
-				&data[removedIndex * sizeOfComponent],
-				&data[lastIndex * sizeOfComponent],
-				sizeOfComponent);
-			Component *movedComp = reinterpret_cast<Component *>(&data[lastIndex * sizeOfComponent]);
-			int movedObjectID = movedComp->object.id;
-			objectsInfo[movedObjectID] = removedIndex;
-		}
-
-		counter--;
-		data.resize(counter * sizeOfComponent);
-		objectsInfo[objectID] = -1;
-	}
-
-	template <class T>
-	inline T &addComponent(Object *object, int objectID)
-	{
-		if (objectsInfo.size() <= objectID)
-			objectsInfo.resize(objectID + 1, -1);
-
-		int index = counter++;
-		objectsInfo[objectID] = index;
-
-		size_t offset = index * sizeof(T);
-		if (data.size() < offset + sizeof(T))
-			data.resize(offset + sizeof(T));
-
-		T *ptr = new (&data[offset]) T();
-		ptr->object = *object;
-		ptr->enabled = true;
-		return *ptr;
-	}
-
-	template <class T>
-	inline T *getPtr() { return reinterpret_cast<T *>(&data[0]); }
-	inline int size() { return counter; }
-
-	template <class T>
-	inline bool hasComponent(int objectID)
-	{
-		if (objectID >= objectsInfo.size())
-			return false;
-		int index = objectsInfo[objectID];
-		if (index == -1)
-			return false;
-		return true;
-	}
-
-private:
-	std::vector<int> objectsInfo;
-	std::vector<char> data;
-	int counter = 0;
-	int sizeOfComponent = 0;
-};
-
-class ECS
-{
-public:
-	ECS()
-	{
-		getComponentID<Transform>();
-		getComponentID<RenderView>();
+	ECS() {
+		ecsCore.getComponentID<Transform>();
+		ecsCore.getComponentID<RenderView>();
 		transformArray.resize(1);
 		transformArray[0].reserve(TRANSFORM_ARRAY_SIZE);
 	};
 
-	inline static Object createObject()
-	{
-		if (ecs->usedID.empty())
-		{
-			if (ecs->transformArray.back().size() == TRANSFORM_ARRAY_SIZE)
-			{
-				ecs->transformArray.push_back(std::vector<Transform>());
-				ecs->transformArray.back().reserve(TRANSFORM_ARRAY_SIZE);
-			}
-
-			int highArrayIndex = ecs->objectsCounter / TRANSFORM_ARRAY_SIZE;
-			ecs->transformArray[highArrayIndex].push_back(Transform());
-			Object newObj{ecs->objectsCounter, ecs->transformArray[highArrayIndex][ecs->objectsCounter % TRANSFORM_ARRAY_SIZE]};
-			ecs->hierarchySystem.addObject(ecs->objectsCounter);
-			ecs->objectsCounter++;
-			return newObj;
+	inline static Object createObject() {
+		int id = ecs->ecsCore.create();
+		int highArrayIndex = id / TRANSFORM_ARRAY_SIZE;
+		if (highArrayIndex >= ecs->transformArray.size()) {
+			ecs->transformArray.resize(highArrayIndex + 1);
 		}
-
-		int id = ecs->usedID.top();
-		ecs->usedID.pop();
+		auto& bucket = ecs->transformArray[highArrayIndex];
+		int localIndex = id % TRANSFORM_ARRAY_SIZE;
+		if (localIndex >= bucket.size()) {
+			bucket.resize(localIndex + 1);
+		}
+		bucket[localIndex] = Transform();
 		ecs->hierarchySystem.addObject(id);
-		return Object{id, ecs->transformArray[id / TRANSFORM_ARRAY_SIZE][id % TRANSFORM_ARRAY_SIZE]};
+		return Object{ id, bucket[localIndex] };
 	}
-	inline static Object getObjectByID(int id)
-	{
-		return Object{id, ecs->transformArray[id / TRANSFORM_ARRAY_SIZE][id % TRANSFORM_ARRAY_SIZE]};
-	}
-	inline static void deleteObject(Object &object)
-	{
-		ecs->usedID.push(object.id);
-		for (int i = 0; i < ecs->componentManagers.size(); i++)
-		{
-			ecs->componentManagers[i].deleteComponent(object.id);
+
+	inline static void deleteObject(int id) { 
+		std::vector<int> children = ecs->hierarchySystem.getChildren(id);
+		for (int child : children) {
+			deleteObject(child);
 		}
+		ecs->ecsCore.destroy(id);
 	};
 
-	template <class T>
-	inline static T &addComponentToSystem(Object *object, int objectID)
-	{
-		int componentID = ecs->getComponentID<T>();
-		if (ecs->componentManagers.size() <= componentID)
-			ecs->componentManagers.resize(componentID + 1);
+	inline static void deleteObject(Object& object) { deleteObject(object.id); };
 
-		ecs->componentManagers[componentID].init<T>();
-		T& newT = ecs->componentManagers[componentID].addComponent<T>(object, objectID);
-		// if constexpr (std::is_same_v<T, UIElement>)
-		// {
-		// 	ecs->uiManager.add();
-		// }
-		return newT;
+	inline static Object getObjectByID(int id) { return Object{id, ecs->transformArray[id / TRANSFORM_ARRAY_SIZE][id % TRANSFORM_ARRAY_SIZE]}; }
+
+	template<class T>
+	inline static int GetComponentID() { return ecs->ecsCore.getComponentID<T>(); }
+
+
+	template <class T>
+	static T& addComponentToSystem(Object* object, int objectID) {
+		T& component = ecs->ecsCore.AddComponent<T>(objectID);
+		component.object = *object;
+		component.enabled = true;
+		return component;
 	}
 
 	template <class T>
-	inline static T &GetComponent(int objectID)
-	{
-		if constexpr (std::is_same_v<T, Transform>)
-		{
-			return ecs->transformArray[objectID / TRANSFORM_ARRAY_SIZE]
-									  [objectID % TRANSFORM_ARRAY_SIZE];
-		}
-		// else if constexpr (std::is_same_v<T, RenderView>)
-		// {
-		// 	return ecs->renderManager.getRenderView(objectID);
-		// }
-		else
-		{
-			int componentID = ecs->getComponentID<T>();
-			return ecs->componentManagers[componentID].getComponent<T>(objectID);
-		}
+	inline static T &GetComponent(int objectID) {
+		if constexpr (std::is_same_v<T, Transform>) return ecs->transformArray[objectID / TRANSFORM_ARRAY_SIZE] [objectID % TRANSFORM_ARRAY_SIZE];
+		return ecs->ecsCore.GetComponent<T>(objectID);
 	}
 
 	template <class T>
-	inline static bool HasComponent(int objectID)
-	{
-		int componentID = ecs->getComponentID<T>();
-		if (ecs->componentManagers.size() <= componentID)
-			return false;
-		return ecs->componentManagers[componentID].hasComponent<T>(objectID);
-	}
+	inline static bool HasComponent(int objectID) { return ecs->ecsCore.HasComponent<T>(objectID); }
 
 	template <class T>
-	inline static std::pair<T *, int> GetComponents()
-	{
-		int componentID = ecs->getComponentID<T>();
-		if (ecs->componentManagers.size() <= componentID)
-			return {nullptr, 0};
-		return {ecs->componentManagers[componentID].getPtr<T>(), ecs->componentManagers[componentID].size()};
-	}
+	inline static Span<T> GetComponents() { return ecs->ecsCore.GetComponents<T>(); }
 
 	inline static HierarchySystem &GetHierarchy() { return ecs->hierarchySystem; }
-	// inline static UIManager &GetUIManager() { return ecs->uiManager; }
 
+	
+    inline static void SerializeEntity(Object& entity, std::vector<char>& out, long long bitmask = ~0ULL) {
+    	int id = entity.id;
+		int totalComponents = ecs->ecsCore.countComponents(id);
+    	int serializedCount = 0;
+		if (bitmask & 0x1) ++serializedCount;
+
+		int componentID = 0;
+    	for (int i = 0; i < totalComponents; ++i) {
+			componentID = ecs->ecsCore.nextComponentID(id, componentID);
+			if (bitmask & (1ULL << componentID)) ++serializedCount; 
+		}
+
+		append(out, serializedCount);
+    	componentID = 0;
+		if(bitmask & 0x1) {
+			append(out, componentID);
+			append(out, ecs->transformArray[id / TRANSFORM_ARRAY_SIZE][id % TRANSFORM_ARRAY_SIZE]);
+		}
+		for(int i = 0; i < totalComponents; i++) {
+			componentID = ecs->ecsCore.nextComponentID(id, componentID);
+			if (!(bitmask & (1ULL << componentID))) continue;
+
+			append(out, componentID);
+			ecs->ecsCore.SerializeComponent(id, out, componentID);
+		}
+	}
+
+	inline static void DeserializeEntity(Object& entity, Span<char>& in, size_t& offset) {
+		if(entity.valid() == false) return;
+		int id = entity.getID();
+        int countComponents;
+		int componentID;
+
+        read(in, offset, countComponents);
+		for(int i = 0; i < countComponents; i++) {
+        	read(in, offset, componentID);
+			if(componentID == 0) {
+				read(in, offset, ecs->transformArray[id / TRANSFORM_ARRAY_SIZE][id % TRANSFORM_ARRAY_SIZE]);
+				continue;
+			}
+			Component* c = reinterpret_cast<Component*>(ecs->ecsCore.DeserializeComponent(id, in, offset, componentID));
+			c->object = entity;
+			c->enabled = true;
+		}
+	}
 private:
 	static ECS *ecs;
 
-	int globlID = 0;
-	template <class T>
-	inline int getComponentID()
-	{
-		static int id = globlID++;
-		return id;
-	}
-
-	int objectsCounter = 0;
-	std::stack<int> usedID;
+	ECSCore ecsCore;
 	std::vector<std::vector<Transform>> transformArray;
-	std::vector<ComponentManager> componentManagers;
 	HierarchySystem hierarchySystem;
-	// UIManager uiManager;
 };
 
 template <class T>
@@ -222,3 +136,10 @@ inline bool Object::HasComponent() { return ECS::HasComponent<T>(id); }
 inline void Object::setParent(int parentID) { ECS::GetHierarchy().setParent(id, parentID); }
 inline void Object::setParent(Object parent) { ECS::GetHierarchy().setParent(id, parent.id); }
 inline Object Object::getParent() { return ECS::getObjectByID(ECS::GetHierarchy().getParent(id)); }
+
+inline Object Object::getChild(int index) { 
+	static Transform trash;
+	auto& children = ECS::GetHierarchy().getChildren(id);
+    if (index < 0 || index >= (int)children.size()) return Object(-1, trash);
+    return ECS::getObjectByID(children[index]);
+}

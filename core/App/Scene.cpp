@@ -5,12 +5,13 @@
 #include "RenderManager.h"
 #include "InputEventSystem.h"
 #include "NavMeshSystem.h"
-#include "CameraControlSystem.h"
+#include "prefabs.h"
 #include "TextureManager.h"
 #include "BotLogic.h"
 #include "Random.h"
 #include "MaterialManager.h"
 #include "HouseGenerator.h"
+#include "ClientServerSystem.h"
 #include "Image.h"
 
 #include <math.h>
@@ -64,16 +65,17 @@ Object createMainSimulation()
 	cube.AddComponent<RenderView>().mesh_index = 1;
 	cube.GetComponent<RenderView>().materals[0] = testmat;
 
-	for(int i = 0; i < 2; i++){
+	for(int i = 0; i < -2; i++){
 		Object sphere = ECS::createObject();
 		sphere.transform.position = Vector3(i * 2, 15, 4);
 		sphere.AddComponent<SphereCollider>().radius = 1.0f;
 		sphere.AddComponent<Rigidbody>().mass ;
 		sphere.AddComponent<RenderView>().mesh_index = 2;
 		sphere.GetComponent<RenderView>().materals[0] = testmat;
+		sphere.AddComponent<NetworkIdentity>();
 	}
 
-	for(int i = 0; i < 2; i++){
+	for(int i = 0; i < 5; i++){
 		Object physCube = ECS::createObject();
 		physCube.transform.rotation = Quaternion::FromEuler(0, 0, 0);
 		physCube.transform.scale = 1;
@@ -82,22 +84,11 @@ Object createMainSimulation()
 		physCube.AddComponent<Rigidbody>();
 		physCube.AddComponent<RenderView>().mesh_index = 1;
 		physCube.GetComponent<RenderView>().materals[0] = testmat;
+		physCube.AddComponent<NetworkIdentity>();
 	}
 
-	Object player = ECS::createObject();
-	player.transform.position = Vector3(-22, 12, 1.1f);
-	player.AddComponent<Rigidbody>().isKinematic ;
-	player.GetComponent<Rigidbody>().angularLock = AxisLock::X | AxisLock::Y | AxisLock::Z;
-	// player.GetComponent<Rigidbody>().linearLock = AxisLock::X | AxisLock::Y | AxisLock::Z;
-	player.AddComponent<SphereCollider>();
-
-	Object mainCamera = ECS::createObject();
-	mainCamera.transform.position = Vector3(0, 0.1f, 0);
-	mainCamera.setParent(player);
-	mainCamera.AddComponent<CameraControlSystem>().obj = cube;
-	mainCamera.AddComponent<Camera>().color = Color(0.39f, 0.72f, 1.0f);
-	mainCamera.GetComponent<Camera>().frameBufferIndex = TextureManager::CreateFrameBuffer();
-	mainCamera.GetComponent<Camera>().perpective = true;
+	Object player = PrefabSystem::getInstance().createPlayer(true);
+	Object mainCamera = player.getChild(0);
 
 	Mesh perlin = PerlinNoiseMesh(100, 100, 2.0f, 3, 0.9f, 0, 12312);
 	short perlinMat = MaterialManager::CreateMaterial(Material(3, 4, 0, 0xff));
@@ -206,28 +197,24 @@ void createConsole()
 
 void Scene::Start()
 {
-	// collisions[i].offset = Vector3(static_cast<float>(rand()), static_cast<float>(rand()), static_cast<float>(rand())).normalized() * 0.1f;
-	// collisions[i].radius = static_cast<float>(rand() % 1000) / 20000 + 0.01;
-	// transforms[i].scale = Vector3(collisions[i].radius, collisions[i].radius, collisions[i].radius);
-	// aabb[i] = {Vector3(-collisions[i].radius, -collisions[i].radius, -collisions[i].radius), Vector3(collisions[i].radius, collisions[i].radius, collisions[i].radius), i};
-	// collisions[i].radius /= 2;
-	Object mainCamera = createMainSimulation();
+	PrefabSystem::getInstance().createMaterials();
+	createMainSimulation();
 	createConsole();
 	printf("%d %d %d %d\n", sizeof(RenderView), sizeof(Object), sizeof(Component), sizeof(Transform));
 
 	short uiBlock = MaterialManager::CreateMaterial(Material(1, 3, 0, 0));
 
-	Object renderLayerPanel = ECS::createObject();
-	renderLayerPanel.transform.scale = Vector2(0.3, 0.2);
-	renderLayerPanel.AddComponent<RenderView>().layout = 1;
-	renderLayerPanel.GetComponent<RenderView>().materals[0] = uiBlock;
+	// Object renderLayerPanel = ECS::createObject();
+	// renderLayerPanel.transform.scale = Vector2(0.3, 0.2);
+	// renderLayerPanel.AddComponent<RenderView>().layout = 1;
+	// renderLayerPanel.GetComponent<RenderView>().materals[0] = uiBlock;
 
-	Object consoleText = ECS::createObject();
-	consoleText.transform.scale = 0.3f;
-	consoleText.AddComponent<TextView>().layout = 1;
-	consoleText.GetComponent<TextView>().text = "Console";
-	consoleText.setParent(renderLayerPanel);
-	consoleText.GetComponent<TextView>().buildMesh();
+	// Object consoleText = ECS::createObject();
+	// consoleText.transform.scale = 0.3f;
+	// consoleText.AddComponent<TextView>().layout = 1;
+	// consoleText.GetComponent<TextView>().text = "Console";
+	// consoleText.setParent(renderLayerPanel);
+	// consoleText.GetComponent<TextView>().buildMesh();
 
 	short splitMat = MaterialManager::CreateMaterial(Material(2, 0, 0, 0));
 	Object splitLine = ECS::createObject();
@@ -241,11 +228,10 @@ void Scene::Start()
 	// controlablePanels.GetComponent<ScreenLogic>().split({ 0.75, 0, 0}, {2, 1, 1});
 	// controlablePanels.GetComponent<ScreenLogic>().split({0, -0.75, 0}, {1, 2, 1});
 
-	short mainMaterial = MaterialManager::CreateMaterial(Material(1, mainCamera.GetComponent<Camera>().frameBufferIndex, 0, 0.1f));
 	Object panel = ECS::createObject();
 	panel.AddComponent<ScreenBlock>();
 	panel.AddComponent<RenderView>().layout = 1;
-	panel.GetComponent<RenderView>().materals[0] = mainMaterial;
+	panel.GetComponent<RenderView>().materals[0] = PrefabSystem::getInstance().getMainMaterial();
 
 	// Object button = ECS::createObject();
 	// button.AddComponent<Camera>().RenderViewDataIndex = 1;
@@ -254,38 +240,47 @@ void Scene::Start()
 	// Grab& grabObj = button.AddComponent<Grab>(0);
 	// button.AddComponent<Button>(0).onMouseDown = std::bind(&Grab::grab, grabObj);
 	NavMeshSystem::getPtr()->Start();
-	auto [inputEventSystem, InputEventSystemLogicSize] = ECS::GetComponents<InputEventSystem>();
-	for (int i = 0; i < InputEventSystemLogicSize; i++)
+	Span<InputEventSystem> inputEventSystems = ECS::GetComponents<InputEventSystem>();
+	for (int i = 0; i < inputEventSystems.size(); i++)
 	{
-		inputEventSystem[i].Update();
+		inputEventSystems[i].Update();
 	}
 }
 
 void Scene::Update() {
-	auto [screenLogic, screenLogicSize] = ECS::GetComponents<ScreenLogic>();
-	for (int i = 0; i < screenLogicSize; i++) {
-		screenLogic[i].update();
+	InputComponentUpdate();
+
+	Span<ScreenLogic> screenLogics = ECS::GetComponents<ScreenLogic>();
+	for (int i = 0; i < screenLogics.size(); i++) {
+		screenLogics[i].update();
 	}
 
 	NavMeshSystem::getPtr()->Update();
 
-	auto [cameraControlSystem, cameraControlSystemSize] = ECS::GetComponents<CameraControlSystem>();
-	for (int i = 0; i < cameraControlSystemSize; i++) {
-		cameraControlSystem[i].UpdateFPSO();
+	Span<CameraControlSystem> cameraControlSystems = ECS::GetComponents<CameraControlSystem>();
+	for (int i = 0; i < cameraControlSystems.size(); i++) {
+		cameraControlSystems[i].Update();
 	}
 
-	auto [inputEventSystem, InputEventSystemLogicSize] = ECS::GetComponents<InputEventSystem>();
-	for (int i = 0; i < InputEventSystemLogicSize; i++) {
-		inputEventSystem[i].Update();
+	Span<InputEventSystem> inputEventSystems = ECS::GetComponents<InputEventSystem>();
+	for (int i = 0; i < inputEventSystems.size(); i++) {
+		inputEventSystems[i].Update();
 	}
 }
 
 void Scene::FixedUpdate() {
 	PhysicSystem::getInstance()->calculatePhysic();
 
-	auto [botLogic, BotLogicSize] = ECS::GetComponents<BotLogic>();
-	for (int i = 0; i < BotLogicSize; i++)
+	Span<BotLogic> botLogics = ECS::GetComponents<BotLogic>();
+	for (int i = 0; i < botLogics.size(); i++)
 	{
-		botLogic[i].Update();
+		botLogics[i].Update();
+	}
+
+	ClientServerSystem::getInstance().FixedUpdate();
+
+	Span<CameraControlSystem> cameraControlSystems = ECS::GetComponents<CameraControlSystem>();
+	for (int i = 0; i < cameraControlSystems.size(); i++) {
+		cameraControlSystems[i].FixedUpdate();
 	}
 }

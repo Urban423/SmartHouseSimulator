@@ -30,6 +30,71 @@ struct Input {
 	bool actionPressed;
 };
 
+struct NetInput {
+	int netID;
+	Quaternion rotation;
+    Vector2 movement;
+    Vector2 pointerPosition;
+    Vector2 pointerDelta;
+    float scroll;
+
+    bool pointerPressed;
+    bool pointerReleased;
+    bool pointerHold;
+
+    bool jumpPressed;
+    bool sprint;
+    bool pausePressed;
+    bool sitPressed;
+    bool actionPressed;
+};
+
+
+
+inline NetInput ToNetInput(const Input& input, Quaternion rotation) {
+    NetInput net{};
+
+	net.rotation = rotation;
+    net.movement = input.movement;
+    net.pointerPosition = input.pointerPosition;
+    net.pointerDelta = input.pointerDelta;
+    net.scroll = input.scroll;
+
+    net.pointerPressed = input.pointerPressed;
+    net.pointerReleased = input.pointerReleased;
+    net.pointerHold = input.pointerHold;
+
+    net.jumpPressed = input.jumpPressed;
+    net.sprint = input.sprint;
+    net.pausePressed = input.pausePressed;
+    net.sitPressed = input.sitPressed;
+    net.actionPressed = input.actionPressed;
+
+    return net;
+}
+
+inline Input ToInput(const NetInput& net) {
+    Input input{};
+
+    input.movement = net.movement;
+    input.pointerPosition = net.pointerPosition;
+    input.pointerDelta = net.pointerDelta;
+    input.scroll = net.scroll;
+
+    input.pointerPressed = net.pointerPressed;
+    input.pointerReleased = net.pointerReleased;
+    input.pointerHold = net.pointerHold;
+
+    input.jumpPressed = net.jumpPressed;
+    input.sprint = net.sprint;
+    input.pausePressed = net.pausePressed;
+    input.sitPressed = net.sitPressed;
+    input.actionPressed = net.actionPressed;
+
+    return input;
+}
+
+
 class IKeyBoard {
 public:
 	virtual void getKeyboardState(unsigned char* keyboard) = 0;

@@ -5,28 +5,28 @@
 NavMeshSystem* NavMeshSystem::navMeshSystem = new NavMeshSystem();
 
 void NavMeshSystem::Start() {
-	auto[navMeshObstacle, size] = ECS::GetComponents<NavMeshObstacle>();
+	Span<NavMeshObstacle> navMeshObstacles = ECS::GetComponents<NavMeshObstacle>();
 	base = Shapes::Polygon(Rect(-1.0f, -1.0f, 1.0f, 1.0f));
 }
 
 void NavMeshSystem::Update() {
-	auto[navMeshAgent, size] = ECS::GetComponents<NavMeshAgent>();
-	for(int i = 0; i < size; i++) {
-		if(navMeshAgent[i].pathStatus == PathComplete) { continue; }
-		if(navMeshAgent[i].pathStatus == PathInComplete) {
+	Span<NavMeshAgent> navMeshAgents = ECS::GetComponents<NavMeshAgent>();
+	for(int i = 0; i < navMeshAgents.size(); i++) {
+		if(navMeshAgents[i].pathStatus == PathComplete) { continue; }
+		if(navMeshAgents[i].pathStatus == PathInComplete) {
 			//calculate path
-			navMeshAgent[i].pathStatus = PathPartial;
+			navMeshAgents[i].pathStatus = PathPartial;
 			continue;
 		}
 		
-		float deltaPath = navMeshAgent[i].speed * Time::fixedDeltaTime;
-		if(deltaPath * deltaPath >= Vector3::SqrDistance(navMeshAgent[i].object.transform.position, navMeshAgent[i].aimTarget)) { 
-			navMeshAgent[i].pathStatus = PathComplete;
-			navMeshAgent[i].object.transform.position = navMeshAgent[i].aimTarget;
+		float deltaPath = navMeshAgents[i].speed * Time::fixedDeltaTime;
+		if(deltaPath * deltaPath >= Vector3::SqrDistance(navMeshAgents[i].object.transform.position, navMeshAgents[i].aimTarget)) { 
+			navMeshAgents[i].pathStatus = PathComplete;
+			navMeshAgents[i].object.transform.position = navMeshAgents[i].aimTarget;
 			continue;
 		}
 		
-		navMeshAgent[i].object.transform.position += (navMeshAgent[i].aimTarget - navMeshAgent[i].object.transform.position).normalized() * deltaPath;
+		navMeshAgents[i].object.transform.position += (navMeshAgents[i].aimTarget - navMeshAgents[i].object.transform.position).normalized() * deltaPath;
 	}
 }
 

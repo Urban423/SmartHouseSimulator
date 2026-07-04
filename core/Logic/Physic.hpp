@@ -232,7 +232,7 @@ inline bool PhysicSystem::calculateRayCast(Vector3 origin, Vector3 direction, fl
 	for(int i = 0; i < physicView.size(); i++) {
         Collider& c = physicView[i];
         RayHit tempHit;
-		if(c.calculateRayHit(origin, direction, distance, tempHit)) {
+		if(calculateRayHit(origin, direction, distance, tempHit, c)) {
 			if(tempHit.distance < closest) {
 				closest = tempHit.distance;
 				rayHit = tempHit;
@@ -247,12 +247,11 @@ inline void PhysicSystem::simulatePhysicStep() {
 	float dt = Time::fixedDeltaTime;
     if(dt == 0) return;
 
-
     float linearDamping = 0.05f;
     float angularDamping = 0.05f;
-	auto [rigidbodies, rigidbody_count] = ECS::GetComponents<Rigidbody>();
+    Span<Rigidbody> rigidbodies = ECS::GetComponents<Rigidbody>();
 	Vector3 gravity = Vector3(0, -9.81f, 0);
-	for (int i = 0; i < rigidbody_count; i++)
+	for (int i = 0; i < rigidbodies.size(); i++)
     {
         Rigidbody& rb = rigidbodies[i];
 		rb.prevPosition = rb.object.transform.position;
@@ -287,17 +286,15 @@ inline void PhysicSystem::simulatePhysicStep() {
 
 
 
-
-
-
 	PhysicView physicView;
 	contacts.clear();
 	aabb.clear();
 	aabb.resize(physicView.size());
 	for (int i = 0; i < physicView.size(); ++i) {
-        aabb[i] = physicView[i].calculateAABB();
+        aabb[i] = calculateAABB(physicView[i]);
 		aabb[i].index = i;
     }
+
 
     // Sort AABBs based on the X axis
     std::sort(aabb.begin(), aabb.end(), [](const AABB a, const AABB b) {
@@ -324,8 +321,8 @@ inline void PhysicSystem::simulatePhysicStep() {
             Rigidbody* A = c.a->object.HasComponent<Rigidbody>() ? &c.a->object.GetComponent<Rigidbody>() : nullptr;
             Rigidbody* B = c.b->object.HasComponent<Rigidbody>() ? &c.b->object.GetComponent<Rigidbody>() : nullptr;
             if (!A && !B) continue;
-            Vector3 inverseInertiaA = A ? c.a->getInverseInertia(A->mass) : 0.0f;
-            Vector3 inverseInertiaB = B ? c.b->getInverseInertia(B->mass) : 0.0f;
+            Vector3 inverseInertiaA = A ? getInverseInertia(A->mass, *c.a) : 0.0f;
+            Vector3 inverseInertiaB = B ? getInverseInertia(B->mass, *c.b) : 0.0f;
             float invMassA = A ? 1.0f / A->mass : 0.0f;
             float invMassB = B ? 1.0f / B->mass : 0.0f;
             float invMassSum = invMassA + invMassB;
@@ -421,7 +418,7 @@ inline void PhysicSystem::simulatePhysicStep() {
         contactCache[makePairKey(c.a,c.b)] = c;
     }
 
-    for(int i =0; i < rigidbody_count; i++) {
+    for(int i =0; i < rigidbodies.size(); i++) {
         if (rigidbodies[i].isKinematic) continue;
         rigidbodies[i].object.transform.position = rigidbodies[i].prevPosition + rigidbodies[i].velocity * dt;
     }
