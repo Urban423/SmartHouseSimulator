@@ -1,5 +1,4 @@
 #pragma once
-#include <vector>
 #include <Vector2.h>
 #include <Rect.h>
 #include <Mesh.h>

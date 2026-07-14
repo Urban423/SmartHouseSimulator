@@ -8,11 +8,9 @@ public:
 	void init(const TextureStruct desc);
 	
 	inline std::pair<int, int> getSize() { return {width, height}; }
-	unsigned int getID();
+	inline unsigned int getID() { return textureID; }
 public:
 	unsigned int textureID;
-	
-	
 	unsigned int width;
 	unsigned int height;
 };

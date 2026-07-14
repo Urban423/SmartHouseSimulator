@@ -1,8 +1,6 @@
 #pragma once
-#include <stack>
 #include "ECSCore.h"
 #include "Transform.h"
-#include "UIManager.h"
 #include "HierarchySystem.h"
 #define TRANSFORM_ARRAY_SIZE 300
 
@@ -52,7 +50,6 @@ public:
 	static T& addComponentToSystem(Object* object, int objectID) {
 		T& component = ecs->ecsCore.AddComponent<T>(objectID);
 		component.object = *object;
-		component.enabled = true;
 		return component;
 	}
 
@@ -70,6 +67,24 @@ public:
 
 	inline static HierarchySystem &GetHierarchy() { return ecs->hierarchySystem; }
 
+	inline static bool isActive(int objectID) {
+		if (ecs->activeState.size() <= objectID) { return false; }
+		return ecs->activeState[objectID];
+	}
+
+	inline void static UpdateActiveStates() {
+		auto [hierarchy, hierarchySize] = GetHierarchy().rebuild();
+		auto [parents, parentsSize] = GetHierarchy().getParents();
+		if (ecs->activeState.size() < parentsSize) ecs->activeState.resize(parentsSize);
+
+		for (int i = 0; i < hierarchySize; i++) {
+			int id = hierarchy[i];
+			int parent = parents[id];
+			bool selfActive = !HasComponent<Active>(id) || GetComponent<Active>(id).enabled;
+
+			ecs->activeState[id] = selfActive && (parent == -1 || ecs->activeState[parent]);
+		}
+	}
 	
     inline static void SerializeEntity(Object& entity, std::vector<char>& out, long long bitmask = ~0ULL) {
     	int id = entity.id;
@@ -113,7 +128,6 @@ public:
 			}
 			Component* c = reinterpret_cast<Component*>(ecs->ecsCore.DeserializeComponent(id, in, offset, componentID));
 			c->object = entity;
-			c->enabled = true;
 		}
 	}
 private:
@@ -121,6 +135,7 @@ private:
 
 	ECSCore ecsCore;
 	std::vector<std::vector<Transform>> transformArray;
+	std::vector<uint8_t> activeState;
 	HierarchySystem hierarchySystem;
 };
 
@@ -142,4 +157,8 @@ inline Object Object::getChild(int index) {
 	auto& children = ECS::GetHierarchy().getChildren(id);
     if (index < 0 || index >= (int)children.size()) return Object(-1, trash);
     return ECS::getObjectByID(children[index]);
+}
+
+inline const std::vector<int>& Object::getChildrenID() { 
+    return ECS::GetHierarchy().getChildren(id);
 }

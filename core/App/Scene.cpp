@@ -12,48 +12,14 @@
 #include "MaterialManager.h"
 #include "HouseGenerator.h"
 #include "ClientServerSystem.h"
+#include "Settings.h"
 #include "Image.h"
 
 #include <math.h>
 #include <cstdio>
 #include <cmath>
 
-void createTrees()
-{
-	float startX = -9;
-	float endX = 9;
-	float startY = -7;
-	float endY = 7;
-	float delta = 0.25f;
-	float skip_delta = 1.3f;
-	short treeMat = MaterialManager::CreateMaterial(Material(0, 10, 0, 0xff));
-	short bushMat = MaterialManager::CreateMaterial(Material(0, 11, 0, 0xff));
-	for (float i = startY; i < endY; i += delta)
-	{
-		for (float j = startX; j < endX; j += delta)
-		{
-			if ((j * j + i * i) < skip_delta * skip_delta)
-			{
-				continue;
-			}
-			Object Tree = ECS::createObject();
-			float randAngle = noise(0, 6.28);
-			Tree.transform.scale = Vector3(0.2f, 0.2f, 0.2f);
-			Tree.transform.position = Vector3(j, i, 0) + noise(0, delta / 1.5f) * Vector3(sin(randAngle), cos(randAngle), 0);
-			if (rand() & 0x1)
-			{
-				Tree.AddComponent<RenderView>().materals[0] = treeMat;
-			}
-			else
-			{
-				Tree.AddComponent<RenderView>().materals[0] = bushMat;
-			}
-		}
-	}
-}
-
-Object createMainSimulation()
-{
+void createMainSimulation() {
 	// Object generatable = ECS::createObject();
 	// generatable.AddComponent<HouseGenerator>();
 	// // generatable.AddComponent<RenderView>(1).mesh_index = generatedMesh.id;
@@ -65,9 +31,9 @@ Object createMainSimulation()
 	cube.AddComponent<RenderView>().mesh_index = 1;
 	cube.GetComponent<RenderView>().materals[0] = testmat;
 
-	for(int i = 0; i < -2; i++){
+	for(int i = 0; i < 12; i++){
 		Object sphere = ECS::createObject();
-		sphere.transform.position = Vector3(i * 2, 15, 4);
+		sphere.transform.position = Vector3(45 + i * 2, 15, 4);
 		sphere.AddComponent<SphereCollider>().radius = 1.0f;
 		sphere.AddComponent<Rigidbody>().mass ;
 		sphere.AddComponent<RenderView>().mesh_index = 2;
@@ -87,6 +53,7 @@ Object createMainSimulation()
 		physCube.AddComponent<NetworkIdentity>();
 	}
 
+	PauseManager::Create();
 	Object player = PrefabSystem::getInstance().createPlayer(true);
 	Object mainCamera = player.getChild(0);
 
@@ -120,7 +87,8 @@ Object createMainSimulation()
 		// generatable.GetComponent<HouseGenerator>().GenerateHouse(layers[i]);
 		image.addLayer(&layers[i]);
 	}
-	return mainCamera;
+
+
 	// generatable.AddComponent<RenderView>().materals[0] = MaterialManager::CreateMaterial(Material(0, image.convertToTexture(), 0, 0xff));
 
 	/*
@@ -154,24 +122,15 @@ Object createMainSimulation()
 	House.GetComponent<RenderView>().texture_indexes[2] = 2;
 	House.GetComponent<RenderView>().texture_indexes[3] = 3;
 	House.GetComponent<RenderView>().texture_indexes[5] = 4;
-
-	//createTrees();
-
-	Object Grass = ECS::createObject();
-	Grass.transform.scale = Vector3(10, 10, 10);
-	Grass.AddComponent<RenderView>(1).mesh_index = 0;
-	Grass.GetComponent<RenderView>().texture_indexes[0] = 4;
-	Grass.GetComponent<RenderView>().shader_indexes[0] = 3;
 	*/
 }
 
-void createConsole()
-{
+void createConsole() {
 	Object consoleText = ECS::createObject();
 	consoleText.transform.scale = 0.2f;
-	consoleText.transform.position = Vector2(-0.6f, 0.5f);
-	consoleText.AddComponent<TextView>().enabled;
-	consoleText.GetComponent<TextView>().layout = 2;
+	consoleText.transform.position = Vector3(-11, 3.0f, 100);
+	consoleText.AddComponent<TextView>();
+	// consoleText.GetComponent<TextView>().layout = 2;
 	consoleText.GetComponent<TextView>().text = "Sanya is \na super\nmega loser!!!!";
 	consoleText.GetComponent<TextView>().buildMesh();
 
@@ -201,7 +160,6 @@ void Scene::Start()
 	createMainSimulation();
 	createConsole();
 	printf("%d %d %d %d\n", sizeof(RenderView), sizeof(Object), sizeof(Component), sizeof(Transform));
-
 	short uiBlock = MaterialManager::CreateMaterial(Material(1, 3, 0, 0));
 
 	// Object renderLayerPanel = ECS::createObject();
@@ -209,42 +167,39 @@ void Scene::Start()
 	// renderLayerPanel.AddComponent<RenderView>().layout = 1;
 	// renderLayerPanel.GetComponent<RenderView>().materals[0] = uiBlock;
 
-	// Object consoleText = ECS::createObject();
-	// consoleText.transform.scale = 0.3f;
-	// consoleText.AddComponent<TextView>().layout = 1;
-	// consoleText.GetComponent<TextView>().text = "Console";
-	// consoleText.setParent(renderLayerPanel);
-	// consoleText.GetComponent<TextView>().buildMesh();
-
 	short splitMat = MaterialManager::CreateMaterial(Material(2, 0, 0, 0));
 	Object splitLine = ECS::createObject();
 	splitLine.transform.scale = Vector3(0.1f, 0.1f, 0.1f);
 	splitLine.AddComponent<Camera>().renderLayout = 1;
-	splitLine.AddComponent<RenderView>().enabled = false;
+	splitLine.AddComponent<Active>().enabled = false;
+	splitLine.AddComponent<RenderView>();
 	splitLine.GetComponent<RenderView>().layout = 1;
 	splitLine.GetComponent<RenderView>().materals[0] = splitMat;
 	splitLine.AddComponent<InputEventSystem>();
 	splitLine.AddComponent<ScreenLogic>().splitLine = splitLine;
 	// controlablePanels.GetComponent<ScreenLogic>().split({ 0.75, 0, 0}, {2, 1, 1});
 	// controlablePanels.GetComponent<ScreenLogic>().split({0, -0.75, 0}, {1, 2, 1});
-
+	
 	Object panel = ECS::createObject();
+	panel.transform.scale = 2;
 	panel.AddComponent<ScreenBlock>();
 	panel.AddComponent<RenderView>().layout = 1;
 	panel.GetComponent<RenderView>().materals[0] = PrefabSystem::getInstance().getMainMaterial();
-
-	// Object button = ECS::createObject();
+	
 	// button.AddComponent<Camera>().RenderViewDataIndex = 1;
-	// //button.AddComponent<RenderView>(0);
 	// button.AddComponent<InputEventSystem>(0);
 	// Grab& grabObj = button.AddComponent<Grab>(0);
 	// button.AddComponent<Button>(0).onMouseDown = std::bind(&Grab::grab, grabObj);
+
 	NavMeshSystem::getPtr()->Start();
 	Span<InputEventSystem> inputEventSystems = ECS::GetComponents<InputEventSystem>();
 	for (int i = 0; i < inputEventSystems.size(); i++)
 	{
 		inputEventSystems[i].Update();
 	}
+
+
+
 }
 
 void Scene::Update() {
@@ -266,14 +221,14 @@ void Scene::Update() {
 	for (int i = 0; i < inputEventSystems.size(); i++) {
 		inputEventSystems[i].Update();
 	}
+	UISystem::getInstance().Update();
 }
 
 void Scene::FixedUpdate() {
 	PhysicSystem::getInstance()->calculatePhysic();
 
 	Span<BotLogic> botLogics = ECS::GetComponents<BotLogic>();
-	for (int i = 0; i < botLogics.size(); i++)
-	{
+	for (int i = 0; i < botLogics.size(); i++) {
 		botLogics[i].Update();
 	}
 

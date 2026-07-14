@@ -1,7 +1,6 @@
 #pragma once
 #include "Vector2.h"
 #include "Vector3.h"
-#include <string>
 
 struct Vertex
 {
@@ -18,20 +17,25 @@ public:
 	Mesh(int *index, int index_size,
 		 Vertex *vertex, int vertex_size,
 		 unsigned int *materials, unsigned int number_of_materials);
-	Mesh(Mesh &&mesh)
-		: index(mesh.index), index_size(mesh.index_size),
-		  vertex(mesh.vertex), vertex_size(mesh.vertex_size),
-		  materials(mesh.materials), number_of_materials(mesh.number_of_materials)
+	Mesh(Mesh&& mesh) : index(mesh.index),
+		index_size(mesh.index_size),
+		vertex(mesh.vertex),
+		vertex_size(mesh.vertex_size),
+		materials(mesh.materials),
+		number_of_materials(mesh.number_of_materials),
+		id(mesh.id)
 	{
 		mesh.index = nullptr;
 		mesh.vertex = nullptr;
 		mesh.materials = nullptr;
+		mesh.id = -1;
 	}
 	~Mesh();
 
 	void syncWithGPU();
-	void rebuildTextMesh(std::string &text);
-
+	Vector2 calculateAndRebuildTextMesh(std::string& text, float fontSize, float letterSpacing, float lineSpacing);
+private:
+	void buildTextMesh(std::string& text, float fontSize, float letterSpacing, float lineSpacing, Vector2 offset);
 public:
 	Mesh &operator=(Mesh &&mesh);
 

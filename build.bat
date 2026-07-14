@@ -3,7 +3,21 @@ SET IMAGE_NAME=windows_builder
 SET PROJECT_NAME=project
 SET PROJECT_PATH=%~dp0
 SET PLATFORM=windows
+
+
+if "%~1"=="clean" (
+    echo Cleaning build environment...
+
+    docker volume rm %PROJECT_NAME% >nul 2>&1
+    docker volume create %PROJECT_NAME% >nul 2>&1
+
+    docker builder prune -a -f >nul 2>&1
+    exit /b
+)
+
+
 if not "%~1"=="" set PLATFORM=%~1
+
 
 echo Build for %PLATFORM%
 
@@ -32,5 +46,5 @@ IF ERRORLEVEL 1 (
 
 echo Start building
 docker run --rm -v "%PROJECT_NAME%:/workspace" -v "%PROJECT_PATH%:/host_project" %IMAGE_NAME% bash /host_project/tools/build.sh %PLATFORM%
-start "" "./build/OnlineAlpha/OnlineAlpha.exe"
+@REM start "" "./build/OnlineAlpha/OnlineAlpha.exe"
 "./build/OnlineAlpha/OnlineAlpha.exe"

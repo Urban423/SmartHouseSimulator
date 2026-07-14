@@ -3,25 +3,38 @@
 #include "Window.h"
 #include "RenderManager.h"
 #include "WindowsPlatform.h"
+#include "Settings.h"
 #include <cstdio>
 
 
 void Client::create() {
-	IOSystem::addWindow(new Window).create("Sanya lol", 1000, 500, false, true);
+	Settings& s = SettingsSystem::Load();
+	IOSystem::addWindow(new Window).create("Sanya lol", 1000, 500, s.fullscreen, s.vsync);
 	IOSystem::addkeyBorad(new keyBoard).create();
 	IOSystem::addPlatform(new WindowsPlatform).create();
 	
 	GraphicsEngine::init();
+    IOSystem::getWindow().setVSync(s.vsync);
+	
 	GraphicsEngine::clear(Color(0, 0, 0, 1));
 	GraphicsEngine::setCullMode(BackFace);
 	RenderManager::onCreate();
 }
 
 
+// DWORD last = GetTickCount();
+// int frames = 0;
 void Client::update() {
     IOSystem::getInstance().update();
     Scene::Update();
     RenderManager::onUpdate();
     IOSystem::getWindow().swapBuffers();
-    // IOSystem::getWindow().update();
+    // frames++;
+    // DWORD now = GetTickCount();
+    // if (now - last >= 1000) {
+    //     printf("FPS: %d\n", frames);
+
+    //     frames = 0;
+    //     last = now;
+    // }
 }

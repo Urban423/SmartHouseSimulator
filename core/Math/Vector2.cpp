@@ -1,5 +1,8 @@
 #include "Vector2.h"
+#include "Vector3.h"
 #include <math.h>
+
+Vector2::Vector2(const Vector3 b): x(b.x), y(b.y) {}
 
 float Vector2::Distance(const Vector2& a, const Vector2& b)
 {
@@ -99,6 +102,15 @@ Vector2& Vector2::rotate(float angle) {
 	float tmpX = x;
 	x = x * sinAngle + y * cosAngle;
 	y = y * sinAngle - tmpX * cosAngle;
+	return *this;
+}
+
+
+
+
+Vector2& Vector2::operator=(const Vector3 b) { 
+	x = b.x;
+	y = b.y;
 	return *this;
 }
 

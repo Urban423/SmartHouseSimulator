@@ -1,11 +1,8 @@
 #include "IOSystem.h"
 
-TextureStruct IOSystem::readBMP(const char* filename)
-{
+bool IOSystem::readBMP(TextureStruct& out, const char* filename) {
 	CFile f = openCFile(filename);
-	if(f.isEmpty()) {
-		return TextureStruct();
-	}
+	if(f.isEmpty()) return false;
 
 	short  bfType;
 	int    bfSize;
@@ -48,10 +45,9 @@ TextureStruct IOSystem::readBMP(const char* filename)
 	seekCFile(f, bfOffBits, SEEK_SET);
 	
 	//set texture's data
-	TextureStruct texture;
-	texture.width = biWidth;
-	texture.height = biHeight;
-    texture.pixels = new int[biWidth * biHeight];
+	out.width = biWidth;
+	out.height = biHeight;
+    out.pixels = new int[biWidth * biHeight];
 	
 	//helping values
 	char temp = 0;
@@ -61,8 +57,7 @@ TextureStruct IOSystem::readBMP(const char* filename)
 		// left_bottom_corner index -> left_to_corner index
 		//index = (biHeight - y - 1) * biWidth;
 		
-        for(int x = 0; x < biWidth; x++) 
-		{
+        for(int x = 0; x < biWidth; x++)  {
 			int r;
 			readCFile(&r, biBitCount / 8, f);
 			char* bytes = reinterpret_cast<char*>(&r);
@@ -70,7 +65,7 @@ TextureStruct IOSystem::readBMP(const char* filename)
 			if(biBitCount < 32) {
 				bytes[3] = 0xff;
 			}
-			texture.pixels[index] = r;
+			out.pixels[index] = r;
 			index++;
         }
 		
@@ -80,5 +75,5 @@ TextureStruct IOSystem::readBMP(const char* filename)
 		seekCFile(f, padding, SEEK_CUR);
     }
 	
-	return texture;
+	return true;
 }

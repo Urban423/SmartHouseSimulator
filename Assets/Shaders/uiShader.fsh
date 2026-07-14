@@ -33,23 +33,17 @@ float _TMP0;
 varying vec4 TEX0;
 varying vec4 TEX1;
 uniform sampler2D _MainTex;
+uniform vec4 diff_color;
 uniform float time;
 
  // main procedure, the original name was frag
 void main()
 {
     vec4 _color;
-    int letter = int(TEX1.w);
-    float letterX = float(letter % 16);
-    float letterY = floor(float(letter) / 16.0);
     float edge = 0.3f;
     float smooth = 0.01f;
 
-    float x = (TEX0.x + letterX) / 16.0f;
-    float y = (TEX0.y - 1 - letterY) / 16.0f;
-    _color = texture2D(_MainTex, vec2(x, y));
-    float dist = _color.r;
-    float alpha = smoothstep(edge - smooth, edge + smooth, dist);
-    gl_FragColor = vec4(1.0, 1.0, 1.0, alpha);
+    _color = texture2D(_MainTex, vec2(TEX0.x, TEX0.y));
+    gl_FragColor = vec4(_color.rgba * diff_color.rgba);
     return;
 } // main end

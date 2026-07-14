@@ -1,5 +1,5 @@
 #include "Vector2.h"
-#include <cmath>
+#include "stdlib.h"
 
 #ifndef VECTOR3_H
 #define VECTOR3_H
@@ -11,6 +11,8 @@ public:
 	inline Vector3(float value) : x(value), y(value), z(value) {};
 	inline Vector3(const Vector3 &vec3) : x(vec3.x), y(vec3.y), z(vec3.z) {};
 	inline Vector3(const Vector2 &vec2) : x(vec2.x), y(vec2.y), z(0) {};
+	inline Vector3(const Vector2 vec2, float z) : x(vec2.x), y(vec2.y), z(z) {};
+	inline Vector3(const Vector2 vec2, char z) : x(vec2.x), y(vec2.y), z(z) {};
 	inline Vector3(float x, float y, float z) : x(x), y(y), z(z) {};
 
 	float length();

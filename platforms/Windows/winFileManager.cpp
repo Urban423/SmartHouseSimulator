@@ -57,3 +57,13 @@ CFile openCFile(const char* name)
 	
 	return CFile(data, size + 1);
 }
+
+void saveCFile(const char* name, CFile& file) {
+	const char* folderName = "./Assets/";
+    char* fullName = combineTwoWords(folderName, name);
+    FILE* f = fopen(fullName, "wb");
+    delete[] fullName;
+    if (!f) return;
+    fwrite(file.start, 1, file.size, f);
+    fclose(f);
+}

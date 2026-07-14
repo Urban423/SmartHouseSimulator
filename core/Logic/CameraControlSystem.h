@@ -2,78 +2,16 @@
 #include "Physic.h"
 #include "IOSystem.h"
 #include "Transform.h"
+#include "PauseManager.h"
 #include "ClientServerSystem.h"
 
 class InputComponent: public Component {
 public:
 	Input input;
-	bool isLocalPaused;
 
 	void Update() {
-		if (input.pausePressed) isLocalPaused = !isLocalPaused;
-		
-		// Time::timeScale = paused ? 0 : 1.0f;
-        IOSystem::getPlatform().showCursor(isLocalPaused);
-        IOSystem::lockMouse(!isLocalPaused);
-
-
-		Span<TextView> textViews = ECS::GetComponents<TextView>();
-		for(int i = 0; i < input.text.size(); i++) {
-			int c = input.text[i];
-			if(c == 8) { //backspace
-				if(!textViews[0].text.empty()) {
-					textViews[0].text.pop_back();
-				}
-				continue;
-			}
-			if(c == 9) { // tab
-				textViews[0].text.append("    ");
-				continue;
-			}
-			if(IOSystem::getKeyBoard().GetKey(KeyCode_Left_Shift) && c == 13) {
-				textViews[0].text.push_back('\n');
-				continue;
-			}
-			else if(c == 13) { // enter
-				if(textViews[0].text == "host") {
-					// ClientServerSystem::getInstance().host(7777);
-				}
-
-				char command[32];
-				char ip[64];
-				int port;
-				// ClientServerSystem::getInstance().connect("127.0.0.1", 7777);
-				if (sscanf(textViews[0].text.c_str(), "%31s %63s %d", command, ip, &port) == 3)
-				{
-					if (strcmp(command, "connect") == 0)
-					{
-						ClientServerSystem::getInstance().connect(ip, port);
-					}
-				}
-				else
-				{
-					printf("error\n");
-				}
-				textViews[0].text.clear();
-				continue;
-			}
-			if(c >= 32) {
-				textViews[0].text.push_back((char)c);
-			}
-		}
-		if(!input.text.empty())
-		{
-			textViews[0].buildMesh();
-		}
-
-		// if(IOSystem::getKeyBoard().GetKeyDown(KeyCode_P)) {
-		// 	printf("connect");
-		// 	ClientServerSystem::getInstance().connect("127.0.0.1", 7777);
-		// }
-		if(IOSystem::getKeyBoard().GetKeyDown(KeyCode_O)) {
-			printf("host");
-			// ClientServerSystem::getInstance().host(7777);
-		}
+		if (input.pausePressed) PauseManager::Toggle();
+		PauseManager::Update();
 	}
 };
 
@@ -83,10 +21,9 @@ public:
 	float walkSpeed = 3;
 	float runSpeed = 6;
 	float jumpPower = 32;
-	float sensitivity = 121;
 	float minDist = 0.00000003f;
 	float maxDist = 0.08f;
-	float pitch = 0.0f;
+	float pitch = 13;
 	bool sitting = false;
 
 	void sit(bool value) {
@@ -94,18 +31,9 @@ public:
 		object.GetComponent<SphereCollider>().radius = 0.2f * sitting + (1 - sitting) * 1.0f;
 	}
 
-	bool checkPause(Input& input) {
-		if(!object.HasComponent<InputComponent>()) return true;
-		InputComponent& ic = object.GetComponent<InputComponent>();
-		input = ic.input;
-
-		if(ic.isLocalPaused) return true;
-		return false;
-	}
-
 	void FixedUpdate() {
-		Input input;
-		if(checkPause(input)) return;
+		if (PauseManager::IsPaused()) return;
+		Input& input = object.GetComponent<InputComponent>().input;
 
 		Rigidbody& rb = object.GetComponent<Rigidbody>();
 		
@@ -133,8 +61,9 @@ public:
 	}
 
 	void Update() {
-		Input input;
-		if(checkPause(input)) return;
+		if (PauseManager::IsPaused()) return;
+		Input& input = object.GetComponent<InputComponent>().input;
+
 		if(IOSystem::getKeyBoard().GetKeyDown(KeyCode_S) && IOSystem::getKeyBoard().GetKey(KeyCode_Left_CTRL)) {
 			printf("save\n");
 		}
@@ -142,11 +71,13 @@ public:
 		//camera
 		Object camera = object.getChild(0);	
 		Vector2 cursor = input.pointerDelta;
-		float sens = sensitivity * Time::deltaTime;
-		pitch += -cursor.y * sens;
+		Settings& s = SettingsSystem::GetSettings();
+		float sensX = s.sensitivityX * 0.1f;
+		float sensY = s.sensitivityY * 0.1f;
+		pitch += -cursor.y * sensY;
 		pitch = clamp(-89.9f, 89.9f, pitch);
 		camera.transform.rotation = Quaternion::FromEuler(pitch, 0, 0);
-		object.transform.rotation *= Quaternion::FromEuler(0, -cursor.x * sens, 0);
+		object.transform.rotation *= Quaternion::FromEuler(0, -cursor.x * sensX, 0);
 
 		//interact
 		if(input.actionPressed) {

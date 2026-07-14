@@ -2,6 +2,8 @@
 
 void WindowsPlatform::create() {
     arrowCursor = LoadCursor(NULL, IDC_ARROW);
+    handCursor =  LoadCursor(NULL, IDC_HAND);
+    beamCursor =  LoadCursor(NULL, IDC_IBEAM);
     noneCursor = LoadCursor(GetModuleHandle(NULL), MAKEINTRESOURCE(IDI_NONECURSOR));
 }
 

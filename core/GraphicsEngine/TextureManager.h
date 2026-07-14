@@ -1,8 +1,6 @@
 #pragma once
 #include "Texture.h"
 #include "FrameBuffer.h"
-#include <stack> 
-#include <vector> 
 
 class TextureManager {
 public:

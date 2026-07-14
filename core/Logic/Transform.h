@@ -6,11 +6,6 @@
 #include "TimeSystem.h"
 #include "Color.h"
 #include "Mesh.h"
-#include <vector>
-#include <array>
-#include <cstring>
-#include <string>
-#include <functional>
 
 class Transform;
 
@@ -42,9 +37,9 @@ public:
 	void setParent(int parentID);
 	Object getParent();
 	Object getChild(int index);
+	const std::vector<int>& getChildrenID();
 public:
 	Transform &transform;
-
 private:
 	int id;
 
@@ -53,10 +48,12 @@ private:
 	friend class ComponentManager;
 };
 
-struct Component
-{
+struct Component {
 	Object object;
-	bool enabled;
+};
+
+struct Active : public Component {
+	bool enabled = true;
 };
 
 struct Camera : public Component
@@ -75,8 +72,7 @@ struct Transform
 	Vector3 scale = Vector3(1, 1, 1);
 };
 
-struct Material
-{
+struct Material {
 	Material() : shader_indexes(0), texture_index(0), texture_index1(0), color(0xFF) {};
 	Material(short shader_indexes, int texture_index, int texture_index1, Color color) : shader_indexes(shader_indexes), texture_index(texture_index), texture_index1(texture_index1), color(color) {};
 	short shader_indexes = 0;
@@ -85,28 +81,24 @@ struct Material
 	Color color = Color(1, 1, 1, 1);
 };
 
-struct RenderView : public Component
-{
+struct RenderView : public Component {
 	char layout = 0;
 	std::array<short, 4> materals;
 	short mesh_index = 0;
 };
 
-struct ScreenBlock : public Component
-{
-};
 
-class TextView : public Component
-{
+
+
+struct ScreenBlock : public Component {};
+
+class TextView : public Component {
 public:
-	void buildMesh()
-	{
-		mesh.rebuildTextMesh(text);
+	inline void buildMesh() {
+		float fontSize = 0.8f;
+		mesh.calculateAndRebuildTextMesh(text, fontSize, 0, 0);
 	}
-	inline int getId()
-	{
-		return mesh.id;
-	}
+	inline int getId() { return mesh.id; }
 
 	int layout = 0;
 	std::string text;
@@ -127,14 +119,4 @@ public:
 private:
 	inline static int nextID = 0;
     int id;
-};
-
-
-
-
-struct Button : public Component
-{
-	std::function<void()> onMouseDown;
-	std::function<void()> onMouseUp;
-	bool pressed = false;
 };

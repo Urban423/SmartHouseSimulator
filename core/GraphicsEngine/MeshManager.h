@@ -1,5 +1,4 @@
 #pragma once
-#include <vector>
 #include "GraphicsEngine.h"
 #include "Mesh.h"
 
@@ -20,7 +19,6 @@ public:
         GraphicsEngine::setVertexArrayObject(getPtr()->vertexes[id]);
         GraphicsEngine::setIndexArrayObject(getPtr()->indicies[id]);
         return getPtr()->indicies[id]->getNumberOfMaterials();
-        ;
     }
 
     inline static unsigned getNumberOfPolygonsByMaterialID(int meshID, int materalID)

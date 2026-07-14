@@ -10,15 +10,14 @@ Vector2 getMouseScene() {
 	Vector2 mousePos = IOSystem::getInput().pointerPosition;
 	Rect winRect = IOSystem::getWindow().getInnerSize();
 	Vector2 sceneMousePos = {(mousePos.x - winRect.left) / (winRect.right - winRect.left), 1 - (mousePos.y - winRect.top) / (winRect.bottom - winRect.top)};
-	sceneMousePos *= 2;
+	// sceneMousePos *= 2;
 	sceneMousePos.x -= 1;
 	sceneMousePos.y -= 1;
 	// printf("%f %f\n", (mousePos.x - winRect.left) / (winRect.right - winRect.left), 1 - (mousePos.y - winRect.top) / (winRect.bottom - winRect.top));
 	return sceneMousePos;
 }
 
-void createObjectCopy(Vector3 newPos, Vector3 newScale, Object original)
-{
+void createObjectCopy(Vector3 newPos, Vector3 newScale, Object original) {
 	float light = 0.4;
 	Object newCamera = ECS::createObject();
 	newCamera.AddComponent<Camera>().color = Color(light, light, light);
@@ -35,8 +34,7 @@ void createObjectCopy(Vector3 newPos, Vector3 newScale, Object original)
 	copy.GetComponent<RenderView>().materals[0] = MaterialManager::CreateMaterial(copyMat);
 }
 
-bool areNeighbors(int &axis, Vector3 posA, Vector3 scaleA, Vector3 posB, Vector3 scaleB)
-{
+bool areNeighbors(int &axis, Vector3 posA, Vector3 scaleA, Vector3 posB, Vector3 scaleB) {
 	Vector2 box1_min = Vector2(posA.x - scaleA.x, posA.y - scaleA.y);
 	Vector2 box1_max = Vector2(posA.x + scaleA.x, posA.y + scaleA.y);
 	Vector2 box2_min = Vector2(posB.x - scaleB.x, posB.y - scaleB.y);
@@ -53,8 +51,7 @@ bool areNeighbors(int &axis, Vector3 posA, Vector3 scaleA, Vector3 posB, Vector3
 	return std::abs(distX) < EPSILON_RECTS;
 }
 
-rectsCollisionData getCollisionPoints(Vector3 posA, Vector3 scaleA, Vector3 posB, Vector3 scaleB)
-{
+rectsCollisionData getCollisionPoints(Vector3 posA, Vector3 scaleA, Vector3 posB, Vector3 scaleB) {
 	Vector2 box1_min = Vector2(posA.x - scaleA.x, posA.y - scaleA.y);
 	Vector2 box1_max = Vector2(posA.x + scaleA.x, posA.y + scaleA.y);
 	Vector2 box2_min = Vector2(posB.x - scaleB.x, posB.y - scaleB.y);
@@ -63,8 +60,7 @@ rectsCollisionData getCollisionPoints(Vector3 posA, Vector3 scaleA, Vector3 posB
 	float distX = std::min(box1_max.x, box2_max.x) - std::max(box1_min.x, box2_min.x);
 	float distY = std::min(box1_max.y, box2_max.y) - std::max(box1_min.y, box2_min.y);
 	int axis = 0;
-	if (distX > distY)
-	{
+	if (distX > distY) {
 		std::swap(distX, distY);
 		axis = 1;
 	}
@@ -97,8 +93,8 @@ void ScreenLogic::mouseOnFrameUpdate()
 
 	float rectPosX = rectangle.transform.position.x;
 	float rectPosY = rectangle.transform.position.y;
-	float rectSizeX = rectangle.transform.scale.x;
-	float rectSizeY = rectangle.transform.scale.y;
+	float rectSizeX = rectangle.transform.scale.x / 2;
+	float rectSizeY = rectangle.transform.scale.y / 2;
 	float dx = MousePos.x - rectPosX;
 	float dy = MousePos.y - rectPosY;
 	corner.x = (dx < 0) ? rectPosX - rectSizeX : rectPosX + rectSizeX;
@@ -113,13 +109,11 @@ void ScreenLogic::mouseOnFrameUpdate()
 	float deltaX = std::abs(MousePos.x - corner.x);
 	float deltaY = std::abs(MousePos.y - corner.y);
 	axis = 0;
-	if (deltaX > deltaY)
-	{
+	if (deltaX > deltaY) {
 		axis = 1;
 		closestSideCenter.x = rectangle.transform.position.x;
 	}
-	else
-	{
+	else {
 		closestSideCenter.y = rectangle.transform.position.y;
 	}
 	if ((deltaX < 3 * checkBoxSize || deltaY < 3 * checkBoxSize) && closestSideCenter[axis] != rect[0][axis] && closestSideCenter[axis] != rect[3][axis])
@@ -135,22 +129,18 @@ void ScreenLogic::mouseOnFrameUpdate()
 	}
 }
 
-void ScreenLogic::mouseOnBoxesUpdate(Object &newRectangle, bool &newZone)
-{
+void ScreenLogic::mouseOnBoxesUpdate(Object &newRectangle, bool &newZone) {
 	Vector2 MousePos = getMouseScene();
 	splitLine.transform.scale = Vector3(offsetSize, offsetSize, offsetSize);
-	splitLine.GetComponent<RenderView>().enabled = false;
+	// splitLine.GetComponent<RenderView>().enabled = false;
 	newRectangle = findArea(MousePos.x, MousePos.y);
-	if (newRectangle == -1)
-	{
-		return;
-	}
+	if (newRectangle == -1) return;
 	else if (newRectangle != rectangle)
 	{
 		splitLine.transform.position = newRectangle.transform.position;
 		splitLine.transform.scale = newRectangle.transform.scale;
 		newZone = areNeighbors(axis, rectangle.transform.position, rectangle.transform.scale, newRectangle.transform.position, newRectangle.transform.scale);
-		splitLine.GetComponent<RenderView>().enabled = newZone;
+		// splitLine.GetComponent<RenderView>().enabled = newZone;
 		MaterialManager::Get(splitLine.GetComponent<RenderView>().materals[0]).color = Color(0.7, 0.0, 0.0);
 	}
 	else
@@ -172,7 +162,7 @@ void ScreenLogic::mouseOnBoxesUpdate(Object &newRectangle, bool &newZone)
 		splitLine.transform.position = newRectangle.transform.position;
 		splitLine.transform.position[!axis] = MousePos[!axis];
 		splitLine.transform.scale[axis] = newRectangle.transform.scale[axis];
-		splitLine.GetComponent<RenderView>().enabled = true;
+		// splitLine.GetComponent<RenderView>().enabled = true;
 		MaterialManager::Get(splitLine.GetComponent<RenderView>().materals[0]).color = Color(0.0, !axis ? 0.5 : 0, !axis ? 0 : 0.5);
 	}
 }
@@ -180,7 +170,7 @@ void ScreenLogic::mouseOnBoxesUpdate(Object &newRectangle, bool &newZone)
 void ScreenLogic::mouseOnSplitUpdate()
 {
 	Vector2 MousePos = getMouseScene();
-	splitLine.GetComponent<RenderView>().enabled = true;
+	// splitLine.GetComponent<RenderView>().enabled = true;
 	MousePos[axis] = clamp(leftClamp + minSize, rightClamp - minSize, MousePos[axis]);
 	splitLine.transform.position[axis] = MousePos[axis];
 	MaterialManager::Get(splitLine.GetComponent<RenderView>().materals[0]).color = Color(1.0, axis ? 0.5 : 0, axis ? 0 : 0.5);
@@ -238,7 +228,7 @@ void ScreenLogic::update()
 			bool check = (zones[1] >= minSize) && (zones[0] >= minSize || !(holes & 0x1)) && (zones[2] >= minSize || !(holes & 0x2));
 			if (check == 0)
 			{
-				splitLine.GetComponent<RenderView>().enabled = false;
+				// splitLine.GetComponent<RenderView>().enabled = false;
 				mouseState = MouseOnFrame;
 				return;
 			}
@@ -251,7 +241,7 @@ void ScreenLogic::update()
 			if (holes == 0)
 			{
 				ECS::deleteObject(newRectangle);
-				splitLine.GetComponent<RenderView>().enabled = false;
+				// splitLine.GetComponent<RenderView>().enabled = false;
 				mouseState = MouseOnFrame;
 				auto [width, height] = IOSystem::getWindowSize();
 				resizeWindows(width, height);
@@ -281,18 +271,18 @@ void ScreenLogic::update()
 			newRectangle.transform.scale[axis] = (collisionData.pointsAxis[zoneIndex1 + 1] - collisionData.pointsAxis[zoneIndex1]) / 2;
 			newRectangle.transform.scale[!axis] = zones[holeIndex1] / 2;
 		}
-		else if (mouseState == MouseOnBoxes && splitLine.GetComponent<RenderView>().enabled)
-		{
-			Vector3 pointEdge1 = rectangle.transform.position - rectangle.transform.scale * Vector3(axis, !axis, 0);
-			Vector3 pointEdge2 = 2 * rectangle.transform.position - pointEdge1;
-			Vector3 newPos = (splitLine.transform.position + pointEdge2) / 2;
-			Vector3 newScale = splitLine.transform.scale * Vector3(!axis, axis, 0) + Vector3::Distance(pointEdge2, newPos) * Vector3(axis, !axis, 0);
-			rectangle.transform.position = (splitLine.transform.position + pointEdge1) / 2;
-			rectangle.transform.scale = splitLine.transform.scale * Vector3(!axis, axis, 0) + Vector3::Distance(pointEdge1, rectangle.transform.position) * Vector3(axis, !axis, 0);
+		// else if (mouseState == MouseOnBoxes && splitLine.GetComponent<RenderView>().enabled)
+		// {
+		// 	Vector3 pointEdge1 = rectangle.transform.position - rectangle.transform.scale * Vector3(axis, !axis, 0);
+		// 	Vector3 pointEdge2 = 2 * rectangle.transform.position - pointEdge1;
+		// 	Vector3 newPos = (splitLine.transform.position + pointEdge2) / 2;
+		// 	Vector3 newScale = splitLine.transform.scale * Vector3(!axis, axis, 0) + Vector3::Distance(pointEdge2, newPos) * Vector3(axis, !axis, 0);
+		// 	rectangle.transform.position = (splitLine.transform.position + pointEdge1) / 2;
+		// 	rectangle.transform.scale = splitLine.transform.scale * Vector3(!axis, axis, 0) + Vector3::Distance(pointEdge1, rectangle.transform.position) * Vector3(axis, !axis, 0);
 
-			createObjectCopy(newPos, newScale, rectangle);
-		}
-		splitLine.GetComponent<RenderView>().enabled = false;
+		// 	createObjectCopy(newPos, newScale, rectangle);
+		// }
+		// splitLine.GetComponent<RenderView>().enabled = false;
 		mouseState = MouseOnFrame;
 		auto [width, height] = IOSystem::getWindowSize();
 		resizeWindows(width, height);

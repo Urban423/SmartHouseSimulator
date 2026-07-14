@@ -13,6 +13,14 @@
 #include <mutex>
 #include <thread>
 
+enum class CursorType {
+    UNIDENTIFIED,
+    Arrow,
+    Hand,
+    Text,
+    None
+};
+
 struct Input {
 	std::vector<int> text;
 	std::vector<int> keyEvents;
@@ -158,6 +166,7 @@ private:
 class IWindow {
 public:
 	virtual void create(const char* windowName, int width, int height, bool fullscreen, bool vsync) = 0;
+	virtual void close() = 0;
 
 	virtual Rect getInnerSize() = 0;
 	virtual std::pair<int, int> getScreenSize() = 0;
@@ -165,6 +174,7 @@ public:
 	virtual void setSize(int width, int height) = 0;
 	virtual void setPosition(int x, int y)  = 0;
 	
+    virtual Vector2 screenToClient(Vector2 pos) = 0;
 	virtual bool focus() = 0;
 	virtual void swapBuffers() = 0;
 	virtual void setVSync(const bool vsync) = 0;
@@ -182,6 +192,7 @@ public:
     virtual Vector2 getCursorPosition() = 0;
 	virtual void setCursorPosition(int x, int y) = 0;
     virtual void showCursor(const bool show) = 0;
+    virtual void setCursor(const CursorType cursorType) = 0;
 public:
     void addText(int c) {
         textBuffer.push_back(c);
@@ -208,7 +219,13 @@ public:
 	void update();
 
 	static std::vector<Mesh> readFBX(const char* filename);
-	static TextureStruct readBMP(const char* filename);
+	static bool readBMP(TextureStruct& out, const char* filename);
+	static bool readPNG(TextureStruct& out, const char* filename);
+	static bool readImage(TextureStruct& out, const char* filename) {
+		if(readPNG(out, filename)) return true;
+		if(readBMP(out, filename)) return true;
+		return false;
+	}
 
 	inline static IOSystem& getInstance() {
 		static IOSystem iosystem;

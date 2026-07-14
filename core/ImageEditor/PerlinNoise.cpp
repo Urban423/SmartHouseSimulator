@@ -1,9 +1,5 @@
-#include <random>
-#include <cmath>
-#include <cstdlib>
-#include <vector>
-#include <algorithm> 
 #include "PerlinNoise.h" 
+#include "stdlibInclude.h"
 
 const int permutation[] = {
     151, 160, 137, 91, 90, 15,

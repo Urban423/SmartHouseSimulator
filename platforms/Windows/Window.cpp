@@ -32,6 +32,8 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
 
 Window::~Window() { DestroyWindow(_hwnd); }
 
+void Window::close() {}
+
 void Window::create(const char* windowName, int width, int height, bool fullscreen, bool vsync) {
 	win = this;
 	this->vsync = vsync;

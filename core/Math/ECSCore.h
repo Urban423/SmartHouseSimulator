@@ -1,5 +1,7 @@
 #pragma once
+#include "stdlibInclude.h"
 #include "SparseSet.h"
+#include <vector>
 
 class ECSCore {
 public:
@@ -10,10 +12,11 @@ public:
 	}
 
     template<class T>
-    inline SparseSet& getPool() {
+    inline constexpr SparseSet& getPool() {
         int id = getComponentID<T>();
-        if (components.size() <= id) components.resize(id + 1);
+        if (components.size() <= id) components.resize(std::max<size_t>(components.size() * 2, id + 1));
         if (!components[id].initialized()) components[id].init<T>();
+
         return components[id];
     }
 

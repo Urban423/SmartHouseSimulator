@@ -7,6 +7,7 @@ public:
 	Color() : r(0), g(0), b(0), a(0xFF) {};
 	Color(char light) : r(light), g(light), b(light), a(0xFF) {};
 	Color(char r, char g, char b) : r(r), g(g), b(b), a(0xFF) {};
+	Color(int r, int g, int b) : r(r), g(g), b(b), a(0xFF) {};
 	Color(float r, float g, float b) : a(0xFF)
 	{
 		this->r = static_cast<unsigned char>(r * 255.0f);

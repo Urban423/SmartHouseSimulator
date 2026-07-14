@@ -79,6 +79,12 @@ void Matrix4x4::setTranslation(const Vector3& translation)
 	mat[3][2] = translation.z;
 }
 
+void Matrix4x4::addTranslation(const Vector3 &translation) {
+	mat[3][0] += translation.x;
+	mat[3][1] += translation.y;
+	mat[3][2] += translation.z;
+}
+
 void Matrix4x4::setRotationX(const float x)
 {
 	mat[1][1] = cos(x);
@@ -168,14 +174,14 @@ Matrix4x4 Matrix4x4::operator*(const Matrix4x4 matrix) {
 	return out;
 }
 
-void Matrix4x4::setOrthoLH(
-  float width, float height,
-  float nearPlane, float farPlane)
-{
-	mat[0][0] = 2.0f / width;
-	mat[1][1] = 2.0f / height;
-	mat[2][2] = 1.0f / (farPlane - nearPlane);
-	mat[3][2] = -(nearPlane / (farPlane - nearPlane));
+void Matrix4x4::setOrthoLH(float left, float right, float bottom, float top, float nearPlane, float farPlane){
+	mat[0][0] = 2.0f / (right - left);
+    mat[1][1] = 2.0f / (top - bottom);
+    mat[2][2] = 1.0f / (farPlane - nearPlane);
+
+    // mat[3][0] = -(right + left) / (right - left);
+    // mat[3][1] = -(top + bottom) / (top - bottom);
+    // mat[3][2] = -nearPlane / (farPlane - nearPlane);
 }
 
 void Matrix4x4::setPerspectiveFovLH(

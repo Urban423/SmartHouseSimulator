@@ -47,7 +47,7 @@ public:
 
     void Start();
     void FixedUpdate();
-private:
+public:
     void handleHostMessage(MessageView& msg);
     void handleClientMessage(MessageView& msg);
 private:

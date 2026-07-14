@@ -1,109 +1,181 @@
 #pragma once
-#include <algorithm>
 #include "Transform.h"
 #include "ECS.h"
 #include "DirtyValue.h"
 
-#define UI_BOTTOM_LEFT  0
-#define UI_BOTTOM       1
-#define UI_BOTTOM_RIGHT 2
-#define UI_LEFT         3
-#define UI_CENTER       4
-#define UI_RIGHT        5
-#define UI_TOP_LEFT     6
-#define UI_TOP          7
-#define UI_TOP_RIGHT    8
+enum class Anchor : uint8_t {
+    TopLeft,
+    Top,
+    TopRight,
 
-struct UIElement : public Component
-{
+    Left,
+    Center,
+    Right,
+
+    BottomLeft,
+    Bottom,
+    BottomRight
+};
+
+enum class Direction : uint8_t {
+    Horizontal,
+    Vertical,
+    Absolute
+};
+
+enum class Align : uint8_t {
+    Start,
+    Center,
+    End,
+    Stretch
+};
+
+enum class UISizeFlags : uint8_t {
+    SizeFixed = 0,
+    SizeFill  = 1 << 0,
+    SizeWrap  = 1 << 1
+};
+
+class UISystem;
+struct UIElement {
+protected:
+    UISizeFlags widthFlags = UISizeFlags::SizeFixed;
+    UISizeFlags heightFlags = UISizeFlags::SizeFixed;
+    float width = 200;
+    float height = 200;
+
+    float computedWidth = 200;
+    float computedHeight = 200;
+
+    Vector2 offset;
 public:
-    int texture_index = 0;
-    Color color = Color(1, 1, 1, 1);
-    char anchor = UI_CENTER;
+    static constexpr float Fill = -1.0f;
+    static constexpr float Wrap = -2.0f;
+
+    short padding = 0;
+	char layout = 0;
+    Anchor anchor = Anchor::Center;
+    Anchor pivot = Anchor::Center;
+    Align align = Align::Start;
+    Direction direction = Direction::Horizontal;
+    bool overflow = true;
+    char depth = 0;
+    char weight = 1;
+
+
+    void setWidth(float value)  {
+        widthFlags = UISizeFlags::SizeFixed;
+        if (value < 0) {
+            int mode = static_cast<int>(-value);
+            widthFlags = static_cast<UISizeFlags>(mode);
+            width = 0;
+        }
+        else width = value;
+        computedWidth = width;
+    }
+    void setHeight(float value)  {
+        heightFlags = UISizeFlags::SizeFixed;
+        if (value < 0) {
+            int mode = static_cast<int>(-value);
+            heightFlags = static_cast<UISizeFlags>(mode);
+            height = 0;
+        }
+        else height = value;
+        computedHeight = height;
+    }
+    float getWidth() const { return width; }
+    float getHeight() const { return height; }
+    bool isWidthFill() const { return (char)widthFlags & (char)UISizeFlags::SizeFill; }
+    bool isWidthWrap() const { return (char)widthFlags & (char)UISizeFlags::SizeWrap; }
+    bool isHeightFill() const {  return (char)heightFlags & (char)UISizeFlags::SizeFill; }
+    bool isHeightWrap() const { return (char)heightFlags & (char)UISizeFlags::SizeWrap; }
+    inline bool isFill(char axis) { return axis == 0 ? isWidthFill() : isHeightFill(); }
+
+    inline void setSize(float newWidth, float newHeight) { setWidth(newWidth); setHeight(newHeight); }
+    inline void setComputedWidth(float value) { computedWidth = value; };
+    inline void setComputedHeight(float value) { computedHeight = value; };
+    inline void setComputedSize(Vector2 newSize) { computedWidth = newSize.x; computedHeight = newSize.y; }
+    inline Vector2 getComputedSize() { return { computedWidth, computedHeight }; }
+
+    inline void setOffset(Vector2 newOffset) { offset = newOffset; } 
+    inline void setOffset(Vector2 newOffset, char newDepth) { offset = newOffset; depth = newDepth; } 
+    inline Vector3 getOffset() { return { offset.x, offset.y, -static_cast<float>(depth) }; }
+    inline bool contain(Vector2 point) {  
+        Vector2 half = { computedWidth * 0.5f, computedHeight * 0.5f };
+        return point.x >= offset.x - half.x &&
+               point.x <= offset.x + half.x &&
+               point.y >= offset.y - half.y &&
+               point.y <= offset.y + half.y;
+    }
+};
+
+struct UIBox : public Component, public UIElement {};
+
+struct UIImage : public Component, public UIElement {
+    int texture = 0;
+    Color color;
+};
+
+struct UIText : public Component, public UIElement {
+private:
+	Mesh mesh;
+	bool dirty = true;
+public:
+    float fontSize = 32;
+    std::string text;
+	Color color = 0;
+
+	inline void buildMesh() { 
+        Vector2 newSize = mesh.calculateAndRebuildTextMesh(text, fontSize, 0, 0);
+        setSize(newSize.x, newSize.y);
+    }
+	inline int getId() { return mesh.id; }
+};
+
+struct InputField : public Component {
+    size_t cursor = 0;
+    size_t maxLength = SIZE_MAX;
+
+    std::function<void(char)> onChar = nullptr;
+    std::function<bool(char)> charFilter = nullptr;
+    std::function<void()> onSubmit = nullptr;
+};
+
+struct Slider : public Component {
+    float value = 0.5f;
+    bool dragging = false;
+    std::function<void()> onChangeEnd = nullptr;
+
+    bool calculate();
+};
+
+struct Checkbox : public Component {
+    bool statement = true;
+
+    std::function<void()> onClickDown = nullptr;
+};
+
+struct Button : public Component {
+public:
+    Color onEnterColor = Color(255, 255, 0);
+    Color onPressedColor = Color(100, 100, 100);
+    Color onExitColor = Color(255, 255, 255);
+    bool hovered = false;
+    bool isPressed = false;
+
+    std::function<void()> onClickDown = nullptr;
 };
 
 
-// private:
-//     short zOrder;
-//     friend class UIManager;
-//     inline void setZOrder(short newZOrder)
-//     {
-//         ECS::GetUIManager().setZOrder(object.getID(), newZOrder);
-//     }
-//     inline void setGroup(short newGroup)
-//     {
-//         ECS::GetUIManager().setGroup(object.getID(), newGroup);
-//     }
-//     inline short getZOrder()
-//     {
-//         return zOrder;
-//     }
+class UISystem {
+public:
+    void Rebuild(Object& root);
+    void Update();
 
-// class UIManager
-// {
-// public:
-//     void add(int objectID, short group, short zOrder)
-//     {
-//         if (group >= groups.size())
-//         {
-//             groups.resize(group + 1);
-//             dirty.resize(group + 1, true);
-//         }
-//         if (objectID >= objectInfo.size())
-//             objectInfo.resize(objectID + 1, {-1, -1});
-//         objectInfo[objectID] = {group, (short)groups[group].size()};
-//         groups[group].push_back(objectID);
-//         dirty[group] = true;
-//     }
-
-//     void setGroup(int objectID, short newGroup)
-//     {
-//         auto [oldGroup, index] = objectInfo[objectID];
-//         if (oldGroup == newGroup)
-//             return;
-
-//         if (newGroup >= groups.size())
-//         {
-//             groups.resize(newGroup + 1);
-//             dirty.resize(newGroup + 1, true);
-//         }
-
-//         // remove from old (swap remove)
-//         auto lastID = groups[oldGroup].back();
-//         groups[oldGroup][index] = lastID;
-//         objectInfo[lastID].second = index;
-//         groups[oldGroup].pop_back();
-
-//         // add to new
-//         objectInfo[objectID] = {newGroup, (short)groups[newGroup].size()};
-//         groups[newGroup].push_back(objectID);
-
-//         dirty[oldGroup] = true;
-//         dirty[newGroup] = true;
-//     }
-
-//     void setZOrder(int objectID, short newZ)
-//     {
-//         auto &e = ECS::GetComponent<UIElement>(objectID);
-//         e.zOrder = newZ;
-//         auto [group, index] = objectInfo[objectID];
-//         dirty[group] = true;
-//     }
-
-//     std::vector<int> &getGroup(short group)
-//     {
-//         if (dirty[group])
-//         {
-//             auto &g = groups[group];
-//             std::sort(g.begin(), g.end(), [&](int a, int b)
-//                       { return ECS::GetComponent<UIElement>(a).zOrder < ECS::GetComponent<UIElement>(b).zOrder; });
-//             dirty[group] = false;
-//         }
-//         return groups[group];
-//     }
-
-// private:
-//     std::vector<std::vector<int>> groups;
-//     std::vector<std::pair<short, short>> objectInfo; // objectID -> (group, index in group)
-//     std::vector<bool> dirty;
-// };
+    static UISystem& getInstance() {
+        static UISystem uiSystem;
+        return uiSystem;
+    }
+private:
+    Object focusedInputField;
+};

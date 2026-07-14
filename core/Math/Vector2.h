@@ -1,8 +1,9 @@
 #pragma once
 #include "Matrix3x3.h"
-#include <cmath>
+#include "stdlibInclude.h"
 
 class Matrix3x3;
+class Vector3;
 
 class Vector2
 {
@@ -12,16 +13,19 @@ public:
 	Vector2(double x, 	double y): x(x), y(y) {};
 	Vector2(int x, 		int y): x(x), y(y) {};
 	Vector2(long x, 	long y): x(x), y(y) {};
+	Vector2(const Vector3 b);
 
 	Vector2& rotate(float radianAngle);
 	float length();
 	float squareLength();
 	Vector2 normalized();
 public:
+	Vector2& operator=(const Vector3 b);
 	Vector2 operator+(const Vector2& b);
 	Vector2 operator-();
 	Vector2 operator-(const Vector2& b);
 	Vector2 operator*(float b);
+	inline Vector2 operator*(Vector2 b) { return {x * b.x, y * b.y}; }
 	Vector2 operator*(Matrix3x3& matrix);
 	Vector2 operator*=(Matrix3x3& matrix);
 	bool operator<(const Vector2& b) const;
@@ -30,6 +34,7 @@ public:
 	inline Vector2 operator/(const Vector2 b) { return {x / b.x, y / b.y}; }
 	Vector2& operator/=(float b);
 	Vector2 operator+=(const Vector2& b);
+	inline Vector2& operator+=(const int b) { x += b; y += b; return *this; }
 	Vector2 operator-=(const Vector2& b);
 	Vector2 operator*=(float b);
 	float& operator[](unsigned int index);

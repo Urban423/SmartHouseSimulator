@@ -16,17 +16,19 @@ public:
 
 	void setScale(const Vector3 &scale);
 	void setTranslation(const Vector3 &translation);
+	void addTranslation(const Vector3 &translation);
 	void setRotationX(const float x);
 	void setRotationY(const float y);
 	void setRotationZ(const float z);
 	void setRotation(const Quaternion rotation);
 
-	void setOrthoLH(float width, float height, float nearPlane, float farPlane);
+	void setOrthoLH(float left, float right, float bottom, float top, float nearPlane, float farPlane);
 	void setPerspectiveFovLH(float fov, float aspect, float nearPlane, float farPlane);
 
 	Vector3 getXDirection();
 	Vector3 getYDirection();
 	Vector3 getZDirection();
+	inline Vector3 getTranslation() { return {mat[3][0], mat[3][1], mat[3][2]}; }
 
 	float *getPtr();
 

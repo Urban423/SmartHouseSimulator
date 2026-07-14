@@ -2,7 +2,6 @@
 #include "GraphicsEngine.h"
 #include "Transform.h"
 #include "Scene.h"
-#include <vector>
 
 class RenderManager {
 public:

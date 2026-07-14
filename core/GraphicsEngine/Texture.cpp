@@ -8,7 +8,6 @@ void Texture::init(const TextureStruct desc) {
     glGenTextures(1, &textureID);
     glBindTexture(GL_TEXTURE_2D, textureID);
 
-    // максимально резкий результат
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
@@ -17,14 +16,5 @@ void Texture::init(const TextureStruct desc) {
     glGenerateMipmap(GL_TEXTURE_2D);
 
     glBindTexture(GL_TEXTURE_2D, 0);
-    delete[] desc.pixels;
-}
-
-
-
-
-
-unsigned int Texture::getID()
-{
-	return textureID;
+    // delete[] desc.pixels;
 }

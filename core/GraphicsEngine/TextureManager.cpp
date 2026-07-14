@@ -40,18 +40,15 @@ unsigned int TextureManager::GetTextureByID(unsigned int id)
 	return textureManager->textures[0]->getID();
 }
 
-unsigned int TextureManager::CreateTexture(const TextureStruct desc)
-{
+unsigned int TextureManager::CreateTexture(const TextureStruct desc) {
 	unsigned int index;
-	if (!textureManager->freeTextureIDs.empty())
-	{
+	if (!textureManager->freeTextureIDs.empty()) {
 		index = textureManager->freeTextureIDs.top();
 		textureManager->freeTextureIDs.pop();
-		delete textureManager->textures[index];
+		// delete textureManager->textures[index];
 		textureManager->textures[index] = new Texture(desc);
 	}
-	else
-	{
+	else {
 		index = static_cast<unsigned int>(textureManager->textures.size());
 		textureManager->textures.push_back(new Texture(desc));
 	}

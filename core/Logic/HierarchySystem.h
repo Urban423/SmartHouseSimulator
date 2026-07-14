@@ -1,6 +1,5 @@
 #pragma once
-#include <stack>
-#include <vector>
+#include "stdlibInclude.h"
 
 class HierarchySystem
 {
@@ -9,7 +8,7 @@ public:
     void setParent(int childID, int parentID);
     void updateDepth(int root);
     std::pair<int *, int> rebuild();
-    inline std::pair<int *, int> getParents() { return {parents.data(), (int)parents.size()}; }
+    inline std::pair<int *, int> getParents() { return { parents.data(), (int)parents.size() }; }
     inline int getParent(int objectID) { return parents[objectID]; }
     const std::vector<int>& getChildren(int objectID) const;
 
