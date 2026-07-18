@@ -12,6 +12,7 @@ void Client::create() {
 	IOSystem::addWindow(new Window).create("Sanya lol", 1000, 500, s.fullscreen, s.vsync);
 	IOSystem::addkeyBorad(new keyBoard).create();
 	IOSystem::addPlatform(new WindowsPlatform).create();
+    IOSystem::getInstance().create();
 	
 	GraphicsEngine::init();
     IOSystem::getWindow().setVSync(s.vsync);

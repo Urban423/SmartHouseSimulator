@@ -9,34 +9,28 @@ void PauseManager::Create() {
     uiLayout.AddComponent<UIImage>().color = Color(1, 1, 250, 12);
     uiLayout.GetComponent<UIImage>().setSize(1980, 1080);
     uiLayout.GetComponent<UIImage>().direction = Direction::Horizontal;
+    uiLayout.GetComponent<UIImage>().alignX = UIAlignFlags::Start;
+    uiLayout.GetComponent<UIImage>().alignY = UIAlignFlags::Start;
 
     Object pause = ECS::createObject();
     pause.AddComponent<Active>().enabled = true;
     pause.AddComponent<PauseElement>().activityToPause = true;
-    pause.AddComponent<UIImage>().setSize(UIElement::Wrap, UIElement::Fill);
-    pause.GetComponent<UIImage>().anchor = Anchor::Left;
-    pause.GetComponent<UIImage>().pivot = Anchor::Left;
-    pause.GetComponent<UIImage>().align = Align::Center;
+    pause.AddComponent<UIImage>().setSize(UISizeFlags::Wrap, UISizeFlags::Fill);
     pause.GetComponent<UIImage>().direction = Direction::Vertical;
-    pause.GetComponent<UIImage>().overflow = false;
+    pause.GetComponent<UIImage>().alignX = UIAlignFlags::Center;
+    pause.GetComponent<UIImage>().alignY = UIAlignFlags::Center;
+    pause.GetComponent<UIImage>().overflow = true;
     pause.GetComponent<UIImage>().padding = 32;
-    pause.GetComponent<UIImage>().color = Color(0, 0, 0, 9);
+    pause.GetComponent<UIImage>().color = Color(0, 0, 0, 8);
     pause.setParent(uiLayout);
 
-    Object button1 = ECS::createObject();
-    button1.AddComponent<UIImage>().setSize(-(static_cast<int>(-UIElement::Wrap) | static_cast<int>(-UIElement::Fill)), UIElement::Wrap);
-    button1.GetComponent<UIImage>().align = Align::Center;
-    button1.GetComponent<UIImage>().padding = 12;
-    button1.GetComponent<UIImage>().color = Color(255, 0, 255, 0);
-    button1.setParent(pause);
-
     Object text = ECS::createObject();
-    text.AddComponent<UIText>().setSize(UIElement::Wrap, UIElement::Wrap);
+    text.AddComponent<UIText>().setSize(UISizeFlags::Wrap, UISizeFlags::Wrap);
     text.GetComponent<UIText>().text = "PAUSE";
     text.GetComponent<UIText>().color = 255;
     text.GetComponent<UIText>().fontSize = 64;
     text.GetComponent<UIText>().buildMesh();
-    text.setParent(button1);
+    text.setParent(pause);
 
     Object settings = ECS::createObject();
     settings.AddComponent<Active>().enabled = true;
@@ -53,25 +47,17 @@ void PauseManager::Create() {
         { "Exit", [] { IOSystem::getWindow().onDestroy(); } },
     };
     for(int i = 0; i < buttons.size(); i++) {
-        Object button3 = ECS::createObject();
-        button3.AddComponent<Button>().onClickDown = buttons[i].second;
-        button3.AddComponent<UIImage>().setSize(-(static_cast<int>(-UIElement::Wrap) | static_cast<int>(-UIElement::Fill)), UIElement::Wrap);
-        button3.GetComponent<UIImage>().color = Color(255, 255, 255);
-        button3.GetComponent<UIImage>().padding = 32;
-        button3.setParent(pause);
-
-        Object text = ECS::createObject();
-        text.AddComponent<UIText>().setSize(UIElement::Wrap, UIElement::Wrap);
-        text.GetComponent<UIText>().text = buttons[i].first;
-        text.GetComponent<UIText>().buildMesh();
-        text.setParent(button3);
+        Object button = PrefabSystem::getInstance().createButton(buttons[i].first, buttons[i].second);\
+        button.GetComponent<UIImage>().padding = 32;
+        button.setParent(pause);
     }
 
     //settings
-    settings.AddComponent<UIImage>().setSize(UIElement::Fill, UIElement::Fill);
+    settings.AddComponent<UIImage>().setSize(UISizeFlags::Fill, UISizeFlags::Fill);
     settings.GetComponent<UIImage>().direction = Direction::Vertical;
-    settings.GetComponent<UIImage>().align = Align::Start;
-    settings.GetComponent<UIImage>().overflow = false;
+    settings.GetComponent<UIImage>().alignX = UIAlignFlags::Start;
+    settings.GetComponent<UIImage>().alignY = UIAlignFlags::Start;
+    settings.GetComponent<UIImage>().overflow = true;
     settings.GetComponent<UIImage>().padding = 32;
     settings.GetComponent<UIImage>().color = Color(0, 0, 0, 6);
     settings.setParent(uiLayout);
@@ -88,34 +74,44 @@ void PauseManager::Create() {
 
 
     PrefabSystem::getInstance().createSlider("SensitivityX", SettingsSystem::GetSettings().sensitivityX, 
-        [](Object slider) {
-            SettingsSystem::GetSettings().sensitivityX = slider.GetComponent<Slider>().value;
+        [](float value) {
+            SettingsSystem::GetSettings().sensitivityX = value;
             SettingsSystem::Save();
     }).setParent(settings);
 
 
     PrefabSystem::getInstance().createSlider("SensitivityY", SettingsSystem::GetSettings().sensitivityY, 
-        [](Object slider) {
-            SettingsSystem::GetSettings().sensitivityY = slider.GetComponent<Slider>().value;
+        [](float value) {
+            SettingsSystem::GetSettings().sensitivityY = value;
             SettingsSystem::Save();
     }).setParent(settings);
 
-
     PrefabSystem::getInstance().createCheckbox("Fullscreen", SettingsSystem::GetSettings().fullscreen, 
-        [](Object box) {
-            IOSystem::getWindow().setFullscreen(box.GetComponent<Checkbox>().statement);
-            SettingsSystem::GetSettings().fullscreen = box.GetComponent<Checkbox>().statement;
+        [](bool checked) {
+            IOSystem::getWindow().setFullscreen(checked);
+            SettingsSystem::GetSettings().fullscreen = checked;
             SettingsSystem::Save();
     }).setParent(settings);
 
 
     PrefabSystem::getInstance().createCheckbox("VSync", SettingsSystem::GetSettings().vsync, 
-        [](Object box) {
-            IOSystem::getWindow().setVSync(box.GetComponent<Checkbox>().statement);
-            SettingsSystem::GetSettings().vsync = box.GetComponent<Checkbox>().statement;
+        [](bool checked) {
+            IOSystem::getWindow().setVSync(checked);
+            SettingsSystem::GetSettings().vsync = checked;
             SettingsSystem::Save();
     }).setParent(settings);
-    
+
+    auto resolutions = IOSystem::getSupportedResolutions();
+    // printf("supported resolutions: %d\n", resolutions.size()); for(auto& res : resolutions) { printf("Supported resolution: %d x %d\n", res.first, res.second); }
+    PrefabSystem::getInstance().createDropdown("Resolution", "111111111111", resolutions,  
+        []() {
+            printf("re\n");
+            // SettingsSystem::Save();
+            // auto [width, height] = IOSystem::getPlatform().getSupportedResolutions()[index];
+            // IOSystem::getWindow().setSize(width, height);
+    }).setParent(settings);
+
 
     UISystem::getInstance().Rebuild(uiLayout);
+    return;
 }

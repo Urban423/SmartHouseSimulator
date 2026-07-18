@@ -26,6 +26,22 @@ public:
 		current = cursorType;
         applyCursor();
 	}
+	inline void getSupportedResolutions(std::vector<std::pair<int, int>>& out) {
+		out.clear();
+
+		DEVMODE devMode{};
+		devMode.dmSize = sizeof(DEVMODE);
+		int i = 0;
+		while(EnumDisplaySettings(NULL, i, &devMode)) {
+			std::pair<int,int> resolution = {
+				devMode.dmPelsWidth,
+				devMode.dmPelsHeight
+			};
+
+			if(std::find(out.begin(), out.end(), resolution) == out.end()) out.push_back(resolution);
+			i++;
+		}
+	}
 private:
 	void applyCursor() {
 		if (!isVisible) {

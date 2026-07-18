@@ -23,24 +23,27 @@ enum class Direction : uint8_t {
     Absolute
 };
 
-enum class Align : uint8_t {
+enum class UISizeFlags : uint8_t {
+    Fixed   = 0,
+    Fill   = 1 << 0,
+    Wrap    = 1 << 1,
+};
+
+enum class UIAlignFlags : uint8_t {
     Start,
     Center,
     End,
-    Stretch
+    Justify 
 };
 
-enum class UISizeFlags : uint8_t {
-    SizeFixed = 0,
-    SizeFill  = 1 << 0,
-    SizeWrap  = 1 << 1
-};
+inline UISizeFlags operator|(UISizeFlags a, UISizeFlags b) { return static_cast<UISizeFlags>(static_cast<uint8_t>(a) | static_cast<uint8_t>(b)); }
+inline UISizeFlags operator&(UISizeFlags a, UISizeFlags b) { return static_cast<UISizeFlags>(static_cast<uint8_t>(a) & static_cast<uint8_t>(b)); }
+
+
 
 class UISystem;
 struct UIElement {
 protected:
-    UISizeFlags widthFlags = UISizeFlags::SizeFixed;
-    UISizeFlags heightFlags = UISizeFlags::SizeFixed;
     float width = 200;
     float height = 200;
 
@@ -49,49 +52,44 @@ protected:
 
     Vector2 offset;
 public:
-    static constexpr float Fill = -1.0f;
-    static constexpr float Wrap = -2.0f;
-
     short padding = 0;
 	char layout = 0;
     Anchor anchor = Anchor::Center;
-    Anchor pivot = Anchor::Center;
-    Align align = Align::Start;
+    Anchor pivot = Anchor::Center; 
+    UISizeFlags widthFlags = UISizeFlags::Wrap | UISizeFlags::Fill;
+    UISizeFlags heightFlags = UISizeFlags::Wrap | UISizeFlags::Fill;
+    UIAlignFlags alignX = UIAlignFlags::Start;
+    UIAlignFlags alignY = UIAlignFlags::Start;
     Direction direction = Direction::Horizontal;
     bool overflow = true;
     char depth = 0;
     char weight = 1;
 
 
-    void setWidth(float value)  {
-        widthFlags = UISizeFlags::SizeFixed;
-        if (value < 0) {
-            int mode = static_cast<int>(-value);
-            widthFlags = static_cast<UISizeFlags>(mode);
-            width = 0;
-        }
-        else width = value;
-        computedWidth = width;
-    }
-    void setHeight(float value)  {
-        heightFlags = UISizeFlags::SizeFixed;
-        if (value < 0) {
-            int mode = static_cast<int>(-value);
-            heightFlags = static_cast<UISizeFlags>(mode);
-            height = 0;
-        }
-        else height = value;
-        computedHeight = height;
-    }
     float getWidth() const { return width; }
     float getHeight() const { return height; }
-    bool isWidthFill() const { return (char)widthFlags & (char)UISizeFlags::SizeFill; }
-    bool isWidthWrap() const { return (char)widthFlags & (char)UISizeFlags::SizeWrap; }
-    bool isHeightFill() const {  return (char)heightFlags & (char)UISizeFlags::SizeFill; }
-    bool isHeightWrap() const { return (char)heightFlags & (char)UISizeFlags::SizeWrap; }
-    inline bool isFill(char axis) { return axis == 0 ? isWidthFill() : isHeightFill(); }
+    inline bool HasFlag(UISizeFlags value, UISizeFlags flag) { return static_cast<uint8_t>(value) & static_cast<uint8_t>(flag); }
+    inline bool isFill(char axis) { return axis == 0 ? HasFlag(widthFlags, UISizeFlags::Fill) : HasFlag(heightFlags, UISizeFlags::Fill); }
 
-    inline void setSize(float newWidth, float newHeight) { setWidth(newWidth); setHeight(newHeight); }
+    void setWidth(float value) {
+        widthFlags = UISizeFlags::Fixed;
+        width = value;
+        computedWidth = value;
+    }
+    void setHeight(float value) {
+        heightFlags = UISizeFlags::Fixed;
+        height = value;
+        computedHeight = value;
+    }
+    void setWidth(UISizeFlags flags) { widthFlags = flags; }
+    void setHeight(UISizeFlags flags) { heightFlags = flags; }
+
+    template<typename W, typename H>
+    void setSize(W width, H height) {
+        setWidth(width);
+        setHeight(height);
+    }
+
     inline void setComputedWidth(float value) { computedWidth = value; };
     inline void setComputedHeight(float value) { computedHeight = value; };
     inline void setComputedSize(Vector2 newSize) { computedWidth = newSize.x; computedHeight = newSize.y; }
@@ -108,6 +106,8 @@ public:
                point.y <= offset.y + half.y;
     }
 };
+
+
 
 struct UIBox : public Component, public UIElement {};
 
@@ -132,7 +132,39 @@ public:
 	inline int getId() { return mesh.id; }
 };
 
-struct InputField : public Component {
+
+
+
+struct Interactable : public Component {
+    bool hovered = false;
+    bool pressed = false;
+
+    std::function<void()> onClickDown = nullptr;
+    std::function<void()> onClickUp = nullptr;
+    std::function<void()> onHoverEnter = nullptr;
+    std::function<void()> onHoverExit = nullptr;
+};
+
+struct Button : public Interactable {
+    Color normalColor  = Color(255, 255, 255);
+    Color hoverColor   = Color(255, 255,   0);
+    Color pressedColor = Color(100, 100, 100);
+};
+
+struct Checkbox : public Interactable {
+    bool checked = false;
+    std::function<void(bool)> onValueChanged = nullptr;
+};
+
+struct Slider : public Interactable {
+    float value = 0.5f;
+    bool dragging = false;
+
+    std::function<void(float)> onDragEnd = nullptr;
+    bool calculate();
+};
+
+struct InputField : public Interactable {
     size_t cursor = 0;
     size_t maxLength = SIZE_MAX;
 
@@ -141,32 +173,24 @@ struct InputField : public Component {
     std::function<void()> onSubmit = nullptr;
 };
 
-struct Slider : public Component {
-    float value = 0.5f;
-    bool dragging = false;
-    std::function<void()> onChangeEnd = nullptr;
-
-    bool calculate();
+struct DropdownItem {
+    std::string text;
 };
 
-struct Checkbox : public Component {
-    bool statement = true;
+struct Dropdown : public Interactable {
+    std::vector<DropdownItem> items;
+    
+    int listID = -1;
+    int selected = -1;
+    bool opened = false;
 
-    std::function<void()> onClickDown = nullptr;
-};
-
-struct Button : public Component {
-public:
-    Color onEnterColor = Color(255, 255, 0);
-    Color onPressedColor = Color(100, 100, 100);
-    Color onExitColor = Color(255, 255, 255);
-    bool hovered = false;
-    bool isPressed = false;
-
-    std::function<void()> onClickDown = nullptr;
+    std::function<void(int)> onValueChanged = nullptr;
 };
 
 
+
+
+UIElement* TryGetUIElement(int objectID);
 class UISystem {
 public:
     void Rebuild(Object& root);
@@ -178,4 +202,5 @@ public:
     }
 private:
     Object focusedInputField;
+
 };

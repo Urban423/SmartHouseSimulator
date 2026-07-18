@@ -197,9 +197,6 @@ void Scene::Start()
 	{
 		inputEventSystems[i].Update();
 	}
-
-
-
 }
 
 void Scene::Update() {
@@ -223,6 +220,7 @@ void Scene::Update() {
 	}
 	UISystem::getInstance().Update();
 }
+
 
 void Scene::FixedUpdate() {
 	PhysicSystem::getInstance()->calculatePhysic();

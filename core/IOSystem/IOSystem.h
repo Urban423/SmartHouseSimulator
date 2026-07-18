@@ -24,18 +24,18 @@ enum class CursorType {
 struct Input {
 	std::vector<int> text;
 	std::vector<int> keyEvents;
-	Vector2 movement;
-	Vector2 pointerPosition;
-	Vector2 pointerDelta;
-	float scroll;
-	bool pointerPressed;
-	bool pointerReleased;
-	bool pointerHold;
-	bool jumpPressed;
-	bool sprint;
-	bool pausePressed;
-	bool sitPressed;
-	bool actionPressed;
+	Vector2 movement = Vector2(0, 0);
+	Vector2 pointerPosition = Vector2(0, 0);
+	Vector2 pointerDelta = Vector2(0, 0);
+	float scroll = 0.0f;
+	bool pointerPressed = false;
+	bool pointerReleased = false;
+	bool pointerHold = false;
+	bool jumpPressed = false;
+	bool sprint = false;
+	bool pausePressed = false;
+	bool sitPressed = false;
+	bool actionPressed = false;
 };
 
 struct NetInput {
@@ -193,6 +193,7 @@ public:
 	virtual void setCursorPosition(int x, int y) = 0;
     virtual void showCursor(const bool show) = 0;
     virtual void setCursor(const CursorType cursorType) = 0;
+	virtual void getSupportedResolutions(std::vector<std::pair<int, int>>& out) = 0;
 public:
     void addText(int c) {
         textBuffer.push_back(c);
@@ -238,6 +239,7 @@ public:
 	inline static IKeyBoard& getKeyBoard(int index = 0)  { return *getInstance().keyboards[index]; };
 	inline static IWindow& getWindow(int index = 0) { return *getInstance().windows[index]; };
 	inline static IPlatform& getPlatform() { return *getInstance().platform; };
+	inline static std::vector<std::pair<int, int>>& getSupportedResolutions() { return getInstance().supportedResolutions; }
 	inline static std::pair<int, int> getWindowSize() { 
 		Rect rect = getInstance().windows[0]->getInnerSize();
 		return {rect.right - rect.left, rect.bottom - rect.top};
@@ -245,6 +247,8 @@ public:
 	inline static void lockMouse(bool lock) { getInstance().lockPointers = lock; }
 
 private:
+	std::vector<std::pair<int, int>> supportedResolutions;
+
 	std::vector<IKeyBoard*> keyboards;
 	std::vector<IWindow*> windows;
 	IPlatform* platform;

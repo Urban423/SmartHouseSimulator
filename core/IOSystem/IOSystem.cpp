@@ -20,26 +20,38 @@
 // }
 
 void IOSystem::create() {
-    input.text.reserve(256);
-    input.keyEvents.reserve(256);
-    input.movement = Vector2(0, 0);
-    input.pointerPosition = Vector2(0, 0);
-    input.pointerDelta = Vector2(0, 0);
-    input.scroll = 0.0f;
-    input.pointerPressed = false;
-    input.pointerHold = false;
-    input.pointerReleased = false;
-    input.jumpPressed = false;
-    input.sprint = false;
-    input.pausePressed = false;
-    input.sitPressed = false;
-    input.actionPressed = false;
+    platform->getSupportedResolutions(supportedResolutions);
+    supportedResolutions.erase(
+        std::remove_if(
+            supportedResolutions.begin(),
+            supportedResolutions.end(),
+            [](const auto& r) {
+                int width = r.first;
+                int height = r.second;
+                if(width < 1280 || height < 720) return false;
+                float aspect = (float)width / height;
+                if(std::abs(aspect - 16.0f / 9.0f) > 0.15f) return true;
+                return false;
+            }
+        ),
+        supportedResolutions.end()
+    );
+    std::sort(supportedResolutions.begin(), supportedResolutions.end(),
+        [](const std::pair<int,int>& a, const std::pair<int,int>& b) {
+        int areaA = a.first * a.second;
+        int areaB = b.first * b.second;
+        return areaA < areaB;
+    });
 }
 
 void IOSystem::update() {
     platform->update();
     Vector2 oldPos = input.pointerPosition;
-    create();
+
+    input = Input();
+    input.text.reserve(256);
+    input.keyEvents.reserve(256);
+
     platform->getText(input.text);
     platform->getKeyEvents(input.keyEvents);
     if(!windows[0]->focus()) return;

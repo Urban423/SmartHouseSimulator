@@ -10,10 +10,10 @@ Vector2 getMouseScene() {
 	Vector2 mousePos = IOSystem::getInput().pointerPosition;
 	Rect winRect = IOSystem::getWindow().getInnerSize();
 	Vector2 sceneMousePos = {(mousePos.x - winRect.left) / (winRect.right - winRect.left), 1 - (mousePos.y - winRect.top) / (winRect.bottom - winRect.top)};
-	// sceneMousePos *= 2;
+	sceneMousePos *= 2;
 	sceneMousePos.x -= 1;
 	sceneMousePos.y -= 1;
-	// printf("%f %f\n", (mousePos.x - winRect.left) / (winRect.right - winRect.left), 1 - (mousePos.y - winRect.top) / (winRect.bottom - winRect.top));
+	// printf("%f %f\n", sceneMousePos.x, sceneMousePos.y);
 	return sceneMousePos;
 }
 
@@ -85,8 +85,7 @@ void ScreenLogic::resizeWindows(int width, int height)
 	}
 }
 
-void ScreenLogic::mouseOnFrameUpdate()
-{
+void ScreenLogic::mouseOnFrameUpdate() {
 	if (!IOSystem::getInput().pointerHold) return;
 	Vector2 MousePos = getMouseScene();
 	rectangle = findArea(MousePos.x, MousePos.y);
@@ -99,8 +98,8 @@ void ScreenLogic::mouseOnFrameUpdate()
 	float dy = MousePos.y - rectPosY;
 	corner.x = (dx < 0) ? rectPosX - rectSizeX : rectPosX + rectSizeX;
 	corner.y = (dy < 0) ? rectPosY - rectSizeY : rectPosY + rectSizeY;
-	if (Vector2::DistanceSquare(MousePos, corner) < checkBoxSize)
-	{
+	// printf("DistanceSquare %f\n", Vector2::DistanceSquare(MousePos, corner));
+	if (Vector2::DistanceSquare(MousePos, corner) < checkBoxSize) {
 		mouseState = MouseOnBoxes;
 		return;
 	};
@@ -132,19 +131,17 @@ void ScreenLogic::mouseOnFrameUpdate()
 void ScreenLogic::mouseOnBoxesUpdate(Object &newRectangle, bool &newZone) {
 	Vector2 MousePos = getMouseScene();
 	splitLine.transform.scale = Vector3(offsetSize, offsetSize, offsetSize);
-	// splitLine.GetComponent<RenderView>().enabled = false;
+	splitLine.GetComponent<Active>().enabled = false;
 	newRectangle = findArea(MousePos.x, MousePos.y);
 	if (newRectangle == -1) return;
-	else if (newRectangle != rectangle)
-	{
+	else if (newRectangle != rectangle) {
 		splitLine.transform.position = newRectangle.transform.position;
 		splitLine.transform.scale = newRectangle.transform.scale;
 		newZone = areNeighbors(axis, rectangle.transform.position, rectangle.transform.scale, newRectangle.transform.position, newRectangle.transform.scale);
-		// splitLine.GetComponent<RenderView>().enabled = newZone;
+		splitLine.GetComponent<Active>().enabled = newZone;
 		MaterialManager::Get(splitLine.GetComponent<RenderView>().materals[0]).color = Color(0.7, 0.0, 0.0);
 	}
-	else
-	{
+	else {
 		axis = 0;
 		float deltaX = std::abs(MousePos.x - corner.x);
 		float deltaY = std::abs(MousePos.y - corner.y);
@@ -162,13 +159,12 @@ void ScreenLogic::mouseOnBoxesUpdate(Object &newRectangle, bool &newZone) {
 		splitLine.transform.position = newRectangle.transform.position;
 		splitLine.transform.position[!axis] = MousePos[!axis];
 		splitLine.transform.scale[axis] = newRectangle.transform.scale[axis];
-		// splitLine.GetComponent<RenderView>().enabled = true;
+		splitLine.GetComponent<Active>().enabled = true;
 		MaterialManager::Get(splitLine.GetComponent<RenderView>().materals[0]).color = Color(0.0, !axis ? 0.5 : 0, !axis ? 0 : 0.5);
 	}
 }
 
-void ScreenLogic::mouseOnSplitUpdate()
-{
+void ScreenLogic::mouseOnSplitUpdate() {
 	Vector2 MousePos = getMouseScene();
 	// splitLine.GetComponent<RenderView>().enabled = true;
 	MousePos[axis] = clamp(leftClamp + minSize, rightClamp - minSize, MousePos[axis]);
@@ -195,10 +191,8 @@ void ScreenLogic::mouseOnSplitUpdate()
 	resizeWindows(width, height);
 }
 
-void ScreenLogic::update()
-{
-	if (mouseState == MouseOnFrame)
-	{
+void ScreenLogic::update() {
+	if (mouseState == MouseOnFrame) {
 		mouseOnFrameUpdate();
 		return;
 	}
@@ -271,18 +265,21 @@ void ScreenLogic::update()
 			newRectangle.transform.scale[axis] = (collisionData.pointsAxis[zoneIndex1 + 1] - collisionData.pointsAxis[zoneIndex1]) / 2;
 			newRectangle.transform.scale[!axis] = zones[holeIndex1] / 2;
 		}
-		// else if (mouseState == MouseOnBoxes && splitLine.GetComponent<RenderView>().enabled)
-		// {
-		// 	Vector3 pointEdge1 = rectangle.transform.position - rectangle.transform.scale * Vector3(axis, !axis, 0);
-		// 	Vector3 pointEdge2 = 2 * rectangle.transform.position - pointEdge1;
-		// 	Vector3 newPos = (splitLine.transform.position + pointEdge2) / 2;
-		// 	Vector3 newScale = splitLine.transform.scale * Vector3(!axis, axis, 0) + Vector3::Distance(pointEdge2, newPos) * Vector3(axis, !axis, 0);
-		// 	rectangle.transform.position = (splitLine.transform.position + pointEdge1) / 2;
-		// 	rectangle.transform.scale = splitLine.transform.scale * Vector3(!axis, axis, 0) + Vector3::Distance(pointEdge1, rectangle.transform.position) * Vector3(axis, !axis, 0);
+		else if (mouseState == MouseOnBoxes && splitLine.GetComponent<Active>().enabled) {
+			Vector3 half = rectangle.transform.scale * 0.5f;
+			Vector3 pointEdge1 = rectangle.transform.position - half * Vector3(axis, !axis, 0);
+			Vector3 pointEdge2 = rectangle.transform.position + half * Vector3(axis, !axis, 0);
 
-		// 	createObjectCopy(newPos, newScale, rectangle);
-		// }
-		// splitLine.GetComponent<RenderView>().enabled = false;
+			Vector3 newPos = (splitLine.transform.position + pointEdge2) * 0.5f;
+			Vector3 newHalf = splitLine.transform.scale * Vector3(!axis, axis, 0) + Vector3::Distance(pointEdge2, newPos) * 2.0f * Vector3(axis, !axis, 0);
+			rectangle.transform.position = (splitLine.transform.position + pointEdge1) * 0.5f;
+			Vector3 oldHalf = splitLine.transform.scale * Vector3(!axis, axis, 0) + Vector3::Distance(pointEdge1, rectangle.transform.position) * 2.0f * Vector3(axis, !axis, 0);
+			rectangle.transform.scale = oldHalf;
+
+			createObjectCopy(newPos, newHalf, rectangle);
+		}
+		
+		splitLine.GetComponent<Active>().enabled = false;
 		mouseState = MouseOnFrame;
 		auto [width, height] = IOSystem::getWindowSize();
 		resizeWindows(width, height);

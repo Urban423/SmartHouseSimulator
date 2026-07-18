@@ -17,31 +17,32 @@ void RenderManager::init() {
 	whiteTexture.pixels = (int*)&white;
 	TextureManager::CreateTexture(whiteTexture);
 
+	TextureStruct atlasTexture;
+	IOSystem::readImage(atlasTexture, "Textures/urok_17_opengl.png");
+	TextureManager::CreateTexture(atlasTexture);
+
 	// create texture
 	const char *textureFiles[] = {
-		"Textures/Tile.png",			  	// 1
-		"Textures/Tile1.png",		  		// 2
-		"Textures/Floortex.png",		  	// 3
-		"Textures/Grass.png",		  		// 4
-		"Textures/Ghost.png",		  		// 5
-		"Textures/Ghost1.png",		  		// 6
-		"Textures/LightBulb.png",	  		// 7
-		"Textures/LightBulbOff.png",	  	// 8
-		"Textures/MotionSensor.png",	  	// 9
-		"Textures/Tree.png",			  	// 10
-		"Textures/Bush.png",			  	// 11
-		"Textures/Sofa.png",			  	// 12
-		"Textures/urok_17_opengl.png", 		// 13
+		"Textures/Tile.png",			  	// 2
+		"Textures/Tile1.png",		  		// 3
+		"Textures/Floortex.png",		  	// 4
+		"Textures/Grass.png",		  		// 5
+		"Textures/Ghost.png",		  		// 6
+		"Textures/Ghost1.png",		  		// 7
+		"Textures/LightBulb.png",	  		// 8
+		"Textures/LightBulbOff.png",	  	// 9
+		"Textures/MotionSensor.png",	  	// 10
+		"Textures/Tree.png",			  	// 11
+		"Textures/Bush.png",			  	// 12
+		"Textures/Sofa.png",			  	// 13
 		"Textures/floorWooden1.png",	  	// 14
 	};
+
 	int textureNumber = sizeof(textureFiles) / sizeof(const char *);
-	std::vector<TextureStruct> textures;
-	textures.reserve(textureNumber);
 	for (int i = 0; i < textureNumber; i++) {
 		TextureStruct temp;
 		if(!IOSystem::readImage(temp, textureFiles[i])) continue;
 		TextureManager::CreateTexture(temp);
-		textures.push_back(temp);
 	}
 
 	// create shader
@@ -157,7 +158,7 @@ void RenderManager::renderCamera(Camera &camera, int renderViewIndex)
 
 	Span<TextView> textViews = ECS::GetComponents<TextView>();
 	int text_shader_index = 5;
-	int atlas_index = 13;
+	int atlas_index = 1;
 	GraphicsEngine::setShaderProgram(shaders[text_shader_index]);
 	GraphicsEngine::setProjectionMatrix(shaders[text_shader_index], projection);
 	GraphicsEngine::setCameraViewMatrix(shaders[text_shader_index], camView);
@@ -182,10 +183,9 @@ void RenderManager::renderCamera(Camera &camera, int renderViewIndex)
 	
 	
 	constexpr float scaleUI = 0.01f;
-	constexpr bool ui3d = true;
 	int planeIndex = 0;
 	int uiShaderIndex = 6;
-	if(ui3d) {
+	if(false) {
 		unsigned int number_of_mats = MeshManager::setMeshById(planeIndex);
 		int planeTriangles = MeshManager::getNumberOfPolygonsByMaterialID(planeIndex, 0);
 		Span<UIImage> uiImages = ECS::GetComponents<UIImage>();
@@ -214,27 +214,26 @@ void RenderManager::renderCamera(Camera &camera, int renderViewIndex)
 		Span<UIText> uiTextes = ECS::GetComponents<UIText>();
 		GraphicsEngine::setShaderProgram(shaders[text_shader_index]);
 		GraphicsEngine::setTexture(TextureManager::GetTextureByID(atlas_index), shaders[text_shader_index]);
-		if(ui3d) {
-			for (auto& uiText : uiTextes) {
-				if (uiText.layout != renderViewIndex) continue;
-				int objectID = uiText.object.getID();
-				if (!ECS::isActive(objectID)) continue;
+		
+		for (auto& uiText : uiTextes) {
+			if (uiText.layout != renderViewIndex) continue;
+			int objectID = uiText.object.getID();
+			if (!ECS::isActive(objectID)) continue;
 
-				Vector3 offset = uiText.getOffset() * scaleUI;
-				offset.z *= -1;
-				offset.y += 6;
-				worlds[objectID].setIdentity();
-				worlds[objectID].setScale(scaleUI);
-				worlds[objectID].setTranslation(offset);
+			Vector3 offset = uiText.getOffset() * scaleUI;
+			offset.z *= -1;
+			offset.y += 6;
+			worlds[objectID].setIdentity();
+			worlds[objectID].setScale(scaleUI);
+			worlds[objectID].setTranslation(offset);
 
-				GraphicsEngine::setVector4(shaders[text_shader_index], uiText.color.ToVector4());
-				GraphicsEngine::setMatrix(shaders[text_shader_index], worlds[objectID]);
-				
-				int uiTextMesh = uiText.getId();
-				unsigned int number_of_mats = MeshManager::setMeshById(uiTextMesh);
-				int number_of_triangles = MeshManager::getNumberOfPolygonsByMaterialID(uiTextMesh, 0);
-				GraphicsEngine::drawTriangles(number_of_triangles, nullptr);
-			}
+			GraphicsEngine::setVector4(shaders[text_shader_index], uiText.color.ToVector4());
+			GraphicsEngine::setMatrix(shaders[text_shader_index], worlds[objectID]);
+			
+			int uiTextMesh = uiText.getId();
+			unsigned int number_of_mats = MeshManager::setMeshById(uiTextMesh);
+			int number_of_triangles = MeshManager::getNumberOfPolygonsByMaterialID(uiTextMesh, 0);
+			GraphicsEngine::drawTriangles(number_of_triangles, nullptr);
 		}
 	}
 
