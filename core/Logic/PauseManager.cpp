@@ -73,43 +73,54 @@ void PauseManager::Create() {
     }).setParent(settings);
 
 
-    PrefabSystem::getInstance().createSlider("SensitivityX", SettingsSystem::GetSettings().sensitivityX, 
+    PrefabSystem::getInstance().createWidgetLabel("SensitivityX", PrefabSystem::getInstance().createSlider(SettingsSystem::GetSettings().sensitivityX, 
         [](float value) {
             SettingsSystem::GetSettings().sensitivityX = value;
             SettingsSystem::Save();
-    }).setParent(settings);
+    })).setParent(settings);
 
 
-    PrefabSystem::getInstance().createSlider("SensitivityY", SettingsSystem::GetSettings().sensitivityY, 
+    PrefabSystem::getInstance().createWidgetLabel("SensitivityY", PrefabSystem::getInstance().createSlider(SettingsSystem::GetSettings().sensitivityY, 
         [](float value) {
             SettingsSystem::GetSettings().sensitivityY = value;
             SettingsSystem::Save();
+    })).setParent(settings);
+
+    std::vector<std::string> windowModes {
+        "Window",
+        "Borderless",
+        "Fullscreen"
+    };
+
+    PrefabSystem::getInstance().createRadioGroup(windowModes, (int)SettingsSystem::GetSettings().winMode, 
+        [](int mode) {
+        IOSystem::getWindow().setWindowMode((WindowMode)mode);
+        SettingsSystem::GetSettings().winMode = (WindowMode)mode;
+        SettingsSystem::Save();
     }).setParent(settings);
 
-    PrefabSystem::getInstance().createCheckbox("Fullscreen", SettingsSystem::GetSettings().fullscreen, 
-        [](bool checked) {
-            IOSystem::getWindow().setFullscreen(checked);
-            SettingsSystem::GetSettings().fullscreen = checked;
+    auto resolutions = IOSystem::getSupportedResolutions();
+    PrefabSystem::getInstance().createWidgetLabel("Resolution", PrefabSystem::getInstance().createDropdown(0, resolutions,  
+        [](int resolution) {
+            auto [width, height] = IOSystem::getSupportedResolutions()[resolution];
+            IOSystem::getWindow().setSize(width, height);
             SettingsSystem::Save();
-    }).setParent(settings);
+    })).setParent(settings);
+
+    // PrefabSystem::getInstance().createWidgetLabel("Fullscreen", PrefabSystem::getInstance().createCheckbox(SettingsSystem::GetSettings().fullscreen, 
+    //     [](bool checked) {
+    //         IOSystem::getWindow().setWindowMode(checked);
+    //         SettingsSystem::GetSettings().winMode = checked;
+    //         SettingsSystem::Save();
+    // })).setParent(settings);
 
 
-    PrefabSystem::getInstance().createCheckbox("VSync", SettingsSystem::GetSettings().vsync, 
+    PrefabSystem::getInstance().createWidgetLabel("VSync", PrefabSystem::getInstance().createCheckbox(SettingsSystem::GetSettings().vsync,
         [](bool checked) {
             IOSystem::getWindow().setVSync(checked);
             SettingsSystem::GetSettings().vsync = checked;
             SettingsSystem::Save();
-    }).setParent(settings);
-
-    auto resolutions = IOSystem::getSupportedResolutions();
-    // printf("supported resolutions: %d\n", resolutions.size()); for(auto& res : resolutions) { printf("Supported resolution: %d x %d\n", res.first, res.second); }
-    PrefabSystem::getInstance().createDropdown("Resolution", "111111111111", resolutions,  
-        []() {
-            printf("re\n");
-            // SettingsSystem::Save();
-            // auto [width, height] = IOSystem::getPlatform().getSupportedResolutions()[index];
-            // IOSystem::getWindow().setSize(width, height);
-    }).setParent(settings);
+    })).setParent(settings);
 
 
     UISystem::getInstance().Rebuild(uiLayout);

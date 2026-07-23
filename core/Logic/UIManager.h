@@ -2,6 +2,7 @@
 #include "Transform.h"
 #include "ECS.h"
 #include "DirtyValue.h"
+#include "MeshManager.h"
 
 enum class Anchor : uint8_t {
     TopLeft,
@@ -47,8 +48,8 @@ protected:
     float width = 200;
     float height = 200;
 
-    float computedWidth = 200;
-    float computedHeight = 200;
+    float computedWidth = width;
+    float computedHeight = height;
 
     Vector2 offset;
 public:
@@ -111,25 +112,34 @@ public:
 
 struct UIBox : public Component, public UIElement {};
 
+struct UIPopup : public Component {};
+
 struct UIImage : public Component, public UIElement {
     int texture = 0;
     Color color;
 };
 
 struct UIText : public Component, public UIElement {
-private:
-	Mesh mesh;
-	bool dirty = true;
 public:
+	int meshID = -1;
     float fontSize = 32;
     std::string text;
 	Color color = 0;
 
-	inline void buildMesh() { 
-        Vector2 newSize = mesh.calculateAndRebuildTextMesh(text, fontSize, 0, 0);
+    inline void copyFrom(const UIText& other) {
+        Component oldComponent = static_cast<Component&>(*this);
+        *this = other;
+        object = oldComponent.object;
+    }
+	inline void buildMesh() {
+        if(meshID == -1) {
+            Mesh mesh;
+            meshID = MeshManager::addMesh(mesh);
+        }
+        Vector2 newSize = MeshManager::getMeshByID(meshID).calculateAndRebuildTextMesh(text, fontSize, 0, 0);
         setSize(newSize.x, newSize.y);
     }
-	inline int getId() { return mesh.id; }
+	inline int getId() { return meshID; }
 };
 
 
@@ -145,15 +155,21 @@ struct Interactable : public Component {
     std::function<void()> onHoverExit = nullptr;
 };
 
-struct Button : public Interactable {
-    Color normalColor  = Color(255, 255, 255);
-    Color hoverColor   = Color(255, 255,   0);
-    Color pressedColor = Color(100, 100, 100);
+struct SelectableStyle : public Component {
+    Color normal  = Color(255, 255, 255);
+    Color hover   = Color(255, 255,   0);
+    Color pressed = Color(100, 100, 100);
+    Color selected = Color(255, 0, 255);
 };
 
-struct Checkbox : public Interactable {
-    bool checked = false;
+struct Toggle : public Component {
+    bool value = false;
     std::function<void(bool)> onValueChanged = nullptr;
+};
+
+struct RadioGroup: public Component {
+    int selected = 0;
+    std::function<void(int)> onValueSelect = nullptr;
 };
 
 struct Slider : public Interactable {
@@ -171,20 +187,6 @@ struct InputField : public Interactable {
     std::function<void(char)> onChar = nullptr;
     std::function<bool(char)> charFilter = nullptr;
     std::function<void()> onSubmit = nullptr;
-};
-
-struct DropdownItem {
-    std::string text;
-};
-
-struct Dropdown : public Interactable {
-    std::vector<DropdownItem> items;
-    
-    int listID = -1;
-    int selected = -1;
-    bool opened = false;
-
-    std::function<void(int)> onValueChanged = nullptr;
 };
 
 

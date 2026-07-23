@@ -1,34 +1,35 @@
 #pragma once
-#include "GraphicsEngine.h"
 #include "Mesh.h"
 
-class MeshManager
-{
+class MeshManager {
 public:
-    inline static MeshManager *getPtr() { return meshManager; }
-
-    inline static int addMesh(const Mesh &mesh)
-    {
-        getPtr()->indicies.push_back(GraphicsEngine::createIndexArrayObject({(unsigned int *)mesh.index, (unsigned int)mesh.index_size, mesh.number_of_materials, mesh.materials}));
-        getPtr()->vertexes.push_back(GraphicsEngine::createVertexArrayObject({mesh.vertex, sizeof(Vertex), (unsigned int)mesh.vertex_size}));
-        return getPtr()->vertexes.size() - 1;
+    inline static MeshManager& getInstance() { 
+        static MeshManager meshManager;
+        return meshManager; 
     }
 
-    inline static int setMeshById(int id)
-    {
-        GraphicsEngine::setVertexArrayObject(getPtr()->vertexes[id]);
-        GraphicsEngine::setIndexArrayObject(getPtr()->indicies[id]);
-        return getPtr()->indicies[id]->getNumberOfMaterials();
+    inline static int addMesh(Mesh&& mesh) {
+        getInstance().meshes.emplace_back(std::move(mesh));
+        return getInstance().meshes.size() - 1;
     }
 
-    inline static unsigned getNumberOfPolygonsByMaterialID(int meshID, int materalID)
-    {
-        return getPtr()->indicies[meshID]->getMaterialSize(materalID);
+    inline static int addMesh(Mesh &mesh) {
+        getInstance().meshes.emplace_back(std::move(mesh));
+        return getInstance().meshes.size() - 1;
     }
 
+    inline static Mesh& getMeshByID(const int id) {
+        return getInstance().meshes[id];
+    } 
+
+    inline static int setMeshById(int id) {
+        getInstance().meshes[id].setMeshOnPipeline();
+        return getInstance().meshes[id].getNumberOfMaterials();
+    }
+
+    inline static unsigned int getNumberOfPolygonsByMaterialID(int meshID, int materalID) {
+        return getInstance().meshes[meshID].getMaterialSize(materalID);
+    }
 private:
-    static MeshManager *meshManager;
-
-    std::vector<VertexArrayObject *> vertexes;
-    std::vector<IndexArrayObject *> indicies;
+    std::vector<Mesh> meshes;
 };

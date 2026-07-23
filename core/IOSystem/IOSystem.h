@@ -163,14 +163,20 @@ private:
 	unsigned char oldKeyBoardState[256];
 };
 
+enum WindowMode {
+    Windowmode,
+    Borderless,
+    Fullscreen
+};
+
 class IWindow {
 public:
-	virtual void create(const char* windowName, int width, int height, bool fullscreen, bool vsync) = 0;
+	virtual void create(const char* windowName, int width, int height, WindowMode state, bool vsync) = 0;
 	virtual void close() = 0;
 
 	virtual Rect getInnerSize() = 0;
 	virtual std::pair<int, int> getScreenSize() = 0;
-	virtual void setFullscreen(const bool state) = 0;
+	virtual void setWindowMode(const WindowMode state) = 0;
 	virtual void setSize(int width, int height) = 0;
 	virtual void setPosition(int x, int y)  = 0;
 	

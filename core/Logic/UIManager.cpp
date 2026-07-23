@@ -38,9 +38,9 @@ inline bool calculateAxisSize(int objID, char axis, char layoutDirection, short 
     int uiElementsCounter = 0;
     float maxAxisSize = 0;
     float newAxisSize = 0;
-    for(int i = 0; i < childrenCount; ++i) {
-        UIElement* ui = TryGetUIElement(childrenID[i]);
-        if(!ui || ui->direction == Direction::Absolute) continue;
+    for(auto childID : childrenID) {
+        UIElement* ui = TryGetUIElement(childID);
+        if(ui->direction == Direction::Absolute || ECS::HasComponent<UIPopup>(childID)) continue;
 
         ++uiElementsCounter;
         float childAxisSize = ui->getComputedSize()[axis];
@@ -105,6 +105,13 @@ inline void placeRow(It begin, It end, Vector2 startOffset, float rowSize, Vecto
         UIElement* ui = TryGetUIElement(*begin);
         if (!ui) continue;
 
+        bool absolute = ui->direction == Direction::Absolute;
+        bool popup = ECS::HasComponent<UIPopup>(*begin);
+        if(absolute || popup) {
+            ui->setOffset(parentPos + GetAnchorOffset(ui->anchor, parentSize) - GetAnchorOffset(ui->pivot, ui->getComputedSize()), depth);
+            continue;
+        }
+
         Vector2 childSize = ui->getComputedSize();
 
         float crossOffset = startOffset[!axis];
@@ -136,7 +143,11 @@ inline void calculateAxisPos(int objID, char axis, Vector2 parentPos, Vector2 pa
         UIElement* ui = TryGetUIElement(*it);
         if(!ui) continue;
 
-        if(isAbsolute) ui->setOffset(parentPos + GetAnchorOffset(ui->anchor, parentSize) - GetAnchorOffset(ui->pivot, ui->getComputedSize()), depth);
+        bool absolute = ui->direction == Direction::Absolute;
+        bool popup = ECS::HasComponent<UIPopup>(*it);
+        if(absolute || popup) {
+            ui->setOffset(parentPos + GetAnchorOffset(ui->anchor, parentSize) - GetAnchorOffset(ui->pivot, ui->getComputedSize()), depth);
+        }
         else {
             Vector2 childSize = ui->getComputedSize();
             if (!overflow && localOffset[axis] + childSize[axis] + padding > parentSize[axis]) {

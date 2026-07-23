@@ -5,7 +5,7 @@
 #define SETTINGS \
     FIELD(float, sensitivityX, 0.5f) \
     FIELD(float, sensitivityY, 0.5f) \
-    FIELD(bool, fullscreen, false) \
+    FIELD(WindowMode, winMode, WindowMode::Windowmode) \
     FIELD(bool, vsync, false) \
 
 

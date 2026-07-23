@@ -54,82 +54,38 @@ public:
         cam.setParent(player);
     }
 
-    Object createButton(const char* label, std::function<void()> onClickDown) {
-        Object button = ECS::createObject();
-        button.AddComponent<UIImage>().padding = 12;
-        button.GetComponent<UIImage>().setHeight(UISizeFlags::Wrap);
-        button.GetComponent<UIImage>().color = Color(111, 111, 111);
-        button.AddComponent<Button>();
-        if (onClickDown) {
-            button.GetComponent<Button>().onClickDown = onClickDown;
-        }
+    Object createWidgetLabel(const char* label, Object widget) {
+        Object commonParent = ECS::createObject();
+        commonParent.AddComponent<UIBox>().setSize(UISizeFlags::Fill, UISizeFlags::Wrap);
+        commonParent.GetComponent<UIBox>().direction = Direction::Horizontal;
+        commonParent.GetComponent<UIBox>().alignX = UIAlignFlags::Start;
+        commonParent.GetComponent<UIBox>().alignY = UIAlignFlags::Center;
 
         Object labelText = ECS::createObject();
         labelText.AddComponent<UIText>().text = label;
         labelText.GetComponent<UIText>().buildMesh();
-        labelText.setParent(button);
-        return button;
+        labelText.setParent(commonParent);
+
+        widget.setParent(commonParent);
+        return commonParent;
     }
 
 
-    Object createSlider(const char* label, float startStatement, std::function<void(float)> onChangeEnd) {
-        Object root = ECS::createObject();
-        root.AddComponent<UIBox>().setSize(UISizeFlags::Fill, UISizeFlags::Wrap);
-        root.GetComponent<UIBox>().direction = Direction::Horizontal;
-        root.GetComponent<UIBox>().alignX = UIAlignFlags::Center;
-        root.GetComponent<UIBox>().alignY = UIAlignFlags::Center;
-        // root.GetComponent<UIBox>().padding = 12;
-
-        Object labelText = ECS::createObject();
-        labelText.AddComponent<UIText>().text = label;
-        labelText.GetComponent<UIText>().buildMesh();
-        labelText.setParent(root);
-
+    Object createSlider(float startStatement, std::function<void(float)> onChangeEnd) {
         Object slider = ECS::createObject();
         slider.AddComponent<Slider>().value = startStatement;
         if (onChangeEnd) {
             slider.GetComponent<Slider>().onDragEnd = onChangeEnd;
         }
         slider.AddComponent<UIImage>().setSize(UISizeFlags::Fill, 22);
-        slider.GetComponent<UIImage>().direction = Direction::Absolute;
+        slider.GetComponent<UIImage>().alignY = UIAlignFlags::Center;
         slider.GetComponent<UIImage>().color = Color(111, 111, 111);
-        slider.setParent(root);
 
         Object handle = ECS::createObject();
         handle.AddComponent<UIImage>().setSize(44, 44);
         handle.setParent(slider);
 
-        return root;
-    }
-
-    Object createCheckbox(const char* label, bool startStatement, std::function<void(bool)> onValueChanged) {
-        Object checkbox = ECS::createObject();
-        checkbox.AddComponent<UIBox>().setSize(UISizeFlags::Fill, UISizeFlags::Wrap);
-        checkbox.GetComponent<UIBox>().direction = Direction::Horizontal;
-        checkbox.GetComponent<UIBox>().alignX = UIAlignFlags::Justify;
-        checkbox.GetComponent<UIBox>().alignY = UIAlignFlags::Center;
-
-        Object labelText = ECS::createObject();
-        labelText.AddComponent<UIText>().text = label;
-        labelText.GetComponent<UIText>().buildMesh();
-        labelText.setParent(checkbox);
-
-        Object box = ECS::createObject();
-        box.AddComponent<Checkbox>().checked = startStatement;
-        if(onValueChanged) {
-            box.GetComponent<Checkbox>().onValueChanged = onValueChanged;
-        }
-        box.AddComponent<UIImage>().setSize(UISizeFlags::Wrap, UISizeFlags::Wrap);
-        box.GetComponent<UIImage>().color = Color(255, 255, 255);
-        box.GetComponent<UIImage>().padding = 12;
-        box.setParent(checkbox);
-
-        Object checkMark = ECS::createObject();
-        checkMark.AddComponent<Active>().enabled = startStatement;
-        checkMark.AddComponent<UIImage>().setSize(30, 30);
-        checkMark.GetComponent<UIImage>().color = Color(0, 0, 0);
-        checkMark.setParent(box);
-        return checkbox;
+        return slider;
     }
 
     Object createInputField(const char* label, const char* startText, size_t maxLength, std::function<bool(char)> charFilter) {
@@ -159,63 +115,119 @@ public:
         return inputField;
     }
 
-    Object createDropdown(const char* label, const char* baseText, const std::vector<std::pair<int,int>>& values, std::function<void()> onChange) {
-        Object commonParent = ECS::createObject();
-        commonParent.AddComponent<UIBox>().setSize(UISizeFlags::Wrap, UISizeFlags::Wrap);
-        commonParent.GetComponent<UIBox>().direction = Direction::Horizontal;
-        commonParent.GetComponent<UIBox>().alignX = UIAlignFlags::Start;
-        commonParent.GetComponent<UIBox>().alignY = UIAlignFlags::Center;
+    Object createButton(const char* label, std::function<void()> onClickDown) {
+        Object button = ECS::createObject();
+        button.AddComponent<UIImage>().padding = 12;
+        button.GetComponent<UIImage>().setSize(UISizeFlags::Wrap | UISizeFlags::Fill, UISizeFlags::Wrap);
+        button.GetComponent<UIImage>().color = Color(111, 111, 111);
+        button.AddComponent<Interactable>();
+        if (onClickDown) {
+            button.GetComponent<Interactable>().onClickDown = onClickDown;
+        }
+        button.AddComponent<SelectableStyle>();
 
         Object labelText = ECS::createObject();
         labelText.AddComponent<UIText>().text = label;
         labelText.GetComponent<UIText>().buildMesh();
-        labelText.setParent(commonParent);
+        labelText.setParent(button);
+        return button;
+    }
+
+    Object createCheckbox(bool startStatement, std::function<void(bool)> onValueChanged) {
+        Object checkbox = ECS::createObject();
+
+        Interactable& interactable = checkbox.AddComponent<Interactable>();
+        Toggle& toggle = checkbox.AddComponent<Toggle>();
+        toggle.value = startStatement;
+        if(onValueChanged) {
+            toggle.onValueChanged = onValueChanged;
+        }
+        UIImage& checkboxBox = checkbox.AddComponent<UIImage>();
+        checkboxBox.setSize(UISizeFlags::Wrap, UISizeFlags::Wrap);
+        checkboxBox.color = Color(255, 255, 255);
+        checkboxBox.padding = 12;
 
 
-        Object dropdown = ECS::createObject();
-        dropdown.AddComponent<UIBox>().setSize(UISizeFlags::Wrap, UISizeFlags::Wrap);
-        dropdown.GetComponent<UIBox>().direction = Direction::Absolute;
-        dropdown.GetComponent<UIBox>().alignX = UIAlignFlags::Start;
-        dropdown.GetComponent<UIBox>().alignY = UIAlignFlags::Center;
-        dropdown.setParent(commonParent);
-        
-        Object dropdownButton = ECS::createObject();
-        dropdownButton.AddComponent<Dropdown>();
-        dropdownButton.AddComponent<UIImage>().setSize(UISizeFlags::Wrap, UISizeFlags::Wrap);
-        dropdownButton.GetComponent<UIImage>().direction = Direction::Vertical;
-        dropdownButton.GetComponent<UIImage>().alignX = UIAlignFlags::Start;
-        dropdownButton.GetComponent<UIImage>().alignY = UIAlignFlags::Center;
-        dropdownButton.GetComponent<UIImage>().overflow = false;
-        dropdownButton.GetComponent<UIImage>().padding = 12;
-        dropdownButton.GetComponent<UIImage>().color = Color(255, 255, 255);
-        dropdownButton.setParent(dropdown);
+        Object checkMark = ECS::createObject();
+        checkMark.AddComponent<Active>().enabled = startStatement;
+        checkMark.setParent(checkbox);
+        UIImage& checkMarkUI = checkMark.AddComponent<UIImage>();
+        checkMarkUI.setSize(30, 30);
+        checkMarkUI.alignX = UIAlignFlags::Center;
+        checkMarkUI.setSize(UISizeFlags::Fill, UISizeFlags::Fill);
+        checkMarkUI.color = Color(0, 0, 0);
+        return checkbox;
+    }
 
-        Object dropdownList = ECS::createObject();
-        dropdownButton.GetComponent<Dropdown>().listID = dropdownList.getID();
-        dropdownList.AddComponent<Active>().enabled = false;
-        dropdownList.AddComponent<UIImage>().setSize(UISizeFlags::Fill, UISizeFlags::Wrap);
-        dropdownList.GetComponent<UIImage>().pivot = Anchor::Bottom;
-        dropdownList.GetComponent<UIImage>().anchor = Anchor::Bottom;
-        dropdownList.GetComponent<UIImage>().alignX = UIAlignFlags::Start;
-        dropdownList.GetComponent<UIImage>().alignY = UIAlignFlags::Center; 
-        dropdownList.GetComponent<UIImage>().direction = Direction::Absolute;
-        dropdownList.GetComponent<UIImage>().overflow = false;
-        dropdownList.GetComponent<UIImage>().padding = 1;
-        dropdownList.GetComponent<UIImage>().color = Color(255, 255, 255);
-        dropdownList.setParent(dropdownButton);
+    Object createRadioGroup(const std::vector<std::string>& values, int startValue, std::function<void(int)> onValueSelect) {
+        Object radioGroup = ECS::createObject();
+
+        radioGroup.AddComponent<RadioGroup>().onValueSelect = onValueSelect;
+        UIBox& uiBox = radioGroup.AddComponent<UIBox>();
+        uiBox.setSize(UISizeFlags::Fill, UISizeFlags::Wrap);
+        uiBox.direction = Direction::Horizontal;
+        uiBox.alignX = UIAlignFlags::Start;
+        uiBox.alignY = UIAlignFlags::Center;
+        uiBox.padding = 12;
 
         for(int i = 0; i < values.size(); i++) {
-            Object testItem = createButton((std::to_string(values[i].first) + "x" + std::to_string(values[i].second)).c_str(), onChange);
-            testItem.GetComponent<UIImage>().setSize(UISizeFlags::Fill, UISizeFlags::Wrap);
-            testItem.setParent(dropdownList);
-        }
+            Object button = createButton(values[i].c_str(), nullptr);
+            button.setParent(radioGroup);
 
+            button.GetComponent<UIImage>().setWidth(UISizeFlags::Fill);
+
+            Toggle& toggle = button.AddComponent<Toggle>();
+            toggle.value = (i == startValue);
+        }
+        return radioGroup;
+    }
+
+    Object createDropdown(int startValue, const std::vector<std::pair<int,int>>& values, std::function<void(int)> onValueSelect) {
+        Object dropdown = ECS::createObject();
+        dropdown.AddComponent<UIImage>().setSize(UISizeFlags::Wrap, UISizeFlags::Wrap);
+        dropdown.GetComponent<UIImage>().direction = Direction::Vertical;
+        dropdown.GetComponent<UIImage>().alignX = UIAlignFlags::Start;
+        dropdown.GetComponent<UIImage>().alignY = UIAlignFlags::Center;
+        dropdown.GetComponent<UIImage>().overflow = false;
+        dropdown.GetComponent<UIImage>().padding = 16;
+        dropdown.GetComponent<UIImage>().color = Color(255, 255, 255);
 
         Object text = ECS::createObject();
-        text.AddComponent<UIText>().text = baseText;
-        text.GetComponent<UIText>().buildMesh();
-        text.setParent(dropdownButton);
+        text.AddComponent<UIText>();
+        text.setParent(dropdown);
+        
+        Object dropdownList = ECS::createObject();
+        dropdownList.AddComponent<Active>().enabled = false;
+        dropdownList.AddComponent<UIPopup>();
+        dropdownList.AddComponent<RadioGroup>().onValueSelect = onValueSelect;
+        dropdownList.setParent(dropdown);
 
-        return commonParent;
+        dropdownList.AddComponent<UIImage>().setSize(UISizeFlags::Wrap, UISizeFlags::Wrap);
+        dropdownList.GetComponent<UIImage>().pivot = Anchor::Top;
+        dropdownList.GetComponent<UIImage>().anchor = Anchor::Bottom;
+        dropdownList.GetComponent<UIImage>().direction = Direction::Vertical;
+        dropdownList.GetComponent<UIImage>().alignX = UIAlignFlags::Start;
+        dropdownList.GetComponent<UIImage>().alignY = UIAlignFlags::Center; 
+        dropdownList.GetComponent<UIImage>().overflow = false;
+        dropdownList.GetComponent<UIImage>().color = Color(255, 255, 255);
+
+        int dropdownListID = dropdownList.getID();
+        for(int i = 0; i < values.size(); i++) {
+            Object testItem = createButton((std::to_string(values[i].first) + "x" + std::to_string(values[i].second)).c_str(), [dropdownListID] {
+                auto& active = ECS::GetComponent<Active>(dropdownListID);
+                active.enabled = !active.enabled;
+            });
+            testItem.GetComponent<UIImage>().setSize(UISizeFlags::Fill | UISizeFlags::Wrap, UISizeFlags::Wrap);
+            testItem.setParent(dropdownList);
+            if(i == 0) text.GetComponent<UIText>().copyFrom(testItem.getChild(0).GetComponent<UIText>());
+        }
+
+        dropdown.AddComponent<SelectableStyle>();
+        dropdown.AddComponent<Interactable>().onClickDown = [dropdownListID] {
+            auto& active = ECS::GetComponent<Active>(dropdownListID);
+            active.enabled = !active.enabled;
+        };
+
+        return dropdown;
     }
 };

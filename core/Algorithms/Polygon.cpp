@@ -247,28 +247,19 @@ std::vector<Vector2> sortPointsIntoPolygon(std::vector<Vector2>& points) {
 #include "Triangulation.h"
 
 Mesh Shapes::Polygon::convertToMesh() {
-	Mesh mesh{};
+	Mesh mesh;
 	
 	int n = points.size();
-	if (n < 3) {
-		mesh.vertex = nullptr;
-		mesh.index = nullptr;
-		mesh.vertex_size = 0;
-		mesh.index_size = 0;
-		return mesh;
-	}
+	if (n < 3) return mesh;
 
-	mesh.vertex_size = n;
-	mesh.vertex = new Vertex[n];
+	mesh.vertices.resize(n);
 	for (int i = 0; i < n; i++) {
-		mesh.vertex[i].pos[0] = points[i].x;
-		mesh.vertex[i].pos[1] = points[i].y;
-		mesh.vertex[i].pos[2] = 0.0f;
+		mesh.vertices[i].pos[0] = points[i].x;
+		mesh.vertices[i].pos[1] = points[i].y;
+		mesh.vertices[i].pos[2] = 0.0f;
 	}
 	
-	mesh.index_size = (n - 2) * 3;
-	mesh.index = new int[mesh.index_size];
-	
+	mesh.indices.resize((n - 2) * 3);
 	std::vector<int> index_array(n);
 	for (int i = 0; i < n; i++) index_array[i] = n - i - 1;
 	
@@ -279,15 +270,14 @@ Mesh Shapes::Polygon::convertToMesh() {
 		(bool*)removed.data(),
 		index_array.data(),
 		n,
-		mesh.index
+		(int*)mesh.indices.data()
 	);
 
-	mesh.number_of_materials = 1;
-	mesh.materials = new unsigned int[1];
-	mesh.materials[0] = mesh.index_size;
+	mesh.materials.resize(1, mesh.indices.size());
 	mesh.syncWithGPU();
 	return mesh;
 }
+
 bool PointInQuadXZ(float x, float z, Vector3 quad[4]) {
 	Vector3 p(x, 0, z);
     bool positive = false;

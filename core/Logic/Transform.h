@@ -4,6 +4,7 @@
 #include "Quaternion.h"
 #include "DirtyValue.h"
 #include "TimeSystem.h"
+#include "MeshManager.h"
 #include "Color.h"
 #include "Mesh.h"
 
@@ -96,16 +97,20 @@ class TextView : public Component {
 public:
 	inline void buildMesh() {
 		float fontSize = 0.8f;
-		mesh.calculateAndRebuildTextMesh(text, fontSize, 0, 0);
+        if(meshID == -1) {
+            Mesh mesh;
+            meshID = MeshManager::addMesh(mesh);
+        }
+        Vector2 newSize = MeshManager::getMeshByID(meshID).calculateAndRebuildTextMesh(text, fontSize, 0, 0);
 	}
-	inline int getId() { return mesh.id; }
+	inline int getId() { return meshID; }
 
 	int layout = 0;
 	std::string text;
 	Color color = Color(1, 1, 1, 1);
 
 private:
-	Mesh mesh;
+	int meshID = -1;
 	bool dirty = true;
 };
 

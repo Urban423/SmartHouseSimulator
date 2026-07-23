@@ -53,33 +53,57 @@ void UISystem::Update() {
     
     CursorType cursor = CursorType::Arrow;
 
-    Span<Button> uiButtons = ECS::GetComponents<Button>();
-    for(auto& button : uiButtons) {
-        bool inside = updateInteractable(button, mousePos);
-        if(inside) cursor = CursorType::Hand;
 
-        int objID = button.object.getID();
-        if(ECS::HasComponent<UIImage>(objID)) {
-            Color color = button.normalColor;
-            if(button.hovered) color = button.hoverColor;
-            if(button.pressed) color = button.pressedColor;
-            ECS::GetComponent<UIImage>(objID).color = color;
-        }
-    }
+    Span<Interactable> interactables = ECS::GetComponents<Interactable>();
+    for (auto& interactable : interactables) {
+        bool inside = updateInteractable(interactable, mousePos);
+        if (inside) cursor = CursorType::Hand;
 
-    Span<Checkbox> checkboxs = ECS::GetComponents<Checkbox>();
-    for(auto& checkbox : checkboxs) {
-        bool inside = updateInteractable(checkbox, mousePos);
+        int objID = interactable.object.getID();
+        int parentID = ECS::GetHierarchy().getParent(objID);
 
-        if(inside) cursor = CursorType::Hand;
-        if(checkbox.pressed && clickDown) {
-            checkbox.checked = !checkbox.checked;
-            if(checkbox.onValueChanged) checkbox.onValueChanged(checkbox.checked);
-
-            Object child = checkbox.object.getChild(0);
-            if(child.valid() && child.HasComponent<Active>()) {
-                child.GetComponent<Active>().enabled = checkbox.checked;
+        if (ECS::HasComponent<Toggle>(objID)) {
+            Toggle& toggle = ECS::GetComponent<Toggle>(objID);
+            if (interactable.pressed && clickDown) {
+                toggle.value = !toggle.value;
+                if (toggle.onValueChanged) toggle.onValueChanged(toggle.value);
+                Object child = toggle.object.getChild(0); 
+                if(child.valid() && child.HasComponent<Active>()) { 
+                    child.GetComponent<Active>().enabled = toggle.value; 
+                }
             }
+        }
+
+        if(interactable.pressed && clickDown && parentID != -1 && ECS::HasComponent<RadioGroup>(parentID)) {
+            RadioGroup& group = ECS::GetComponent<RadioGroup>(parentID);
+            auto& children = ECS::GetHierarchy().getChildren(parentID);
+            int selectedIndex = 0;
+            for(auto child: children) {
+                if(child == objID) {
+                    group.selected = selectedIndex;
+                    if(group.onValueSelect) group.onValueSelect(selectedIndex);
+                }
+                if(ECS::HasComponent<Toggle>(child)) {
+                    ECS::GetComponent<Toggle>(child).value = child == objID;
+                }
+                selectedIndex++;
+            }
+        }
+
+        if (ECS::HasComponent<SelectableStyle>(objID)) {
+            SelectableStyle& style = ECS::GetComponent<SelectableStyle>(objID);
+            Color color = style.normal;
+            if (ECS::HasComponent<Toggle>(objID)) {
+                Toggle& toggle = ECS::GetComponent<Toggle>(objID);
+                if (toggle.value) color = style.selected;
+                else if (interactable.pressed) color = style.pressed;
+                else if (interactable.hovered) color = style.hover;
+            }
+            else {
+                if (interactable.pressed) color = style.pressed;
+                else if (interactable.hovered) color = style.hover;
+            }
+            ECS::GetComponent<UIImage>(objID).color = color;
         }
     }
 
@@ -111,25 +135,6 @@ void UISystem::Update() {
                 slider.dragging = false;
                 if (slider.onDragEnd) slider.onDragEnd(slider.value);
             }
-        }
-    }
-
-    Span<Dropdown> dropDownes = ECS::GetComponents<Dropdown>();
-    for(auto& dropDown : dropDownes) {
-        bool inside = updateInteractable(dropDown, mousePos);
-
-        if(inside) cursor = CursorType::Hand;
-        if(!clickDown) continue;
-
-        if(dropDown.opened) {
-            dropDown.opened = false;
-        }
-        else if(inside) {
-            dropDown.opened = true;
-        }
-
-        if(ECS::HasComponent<Active>(dropDown.listID)) {
-            ECS::GetComponent<Active>(dropDown.listID).enabled = dropDown.opened;
         }
     }
 

@@ -40,7 +40,7 @@ void IOSystem::create() {
         [](const std::pair<int,int>& a, const std::pair<int,int>& b) {
         int areaA = a.first * a.second;
         int areaB = b.first * b.second;
-        return areaA < areaB;
+        return areaA > areaB;
     });
 }
 

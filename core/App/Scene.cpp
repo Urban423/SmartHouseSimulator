@@ -57,18 +57,19 @@ void createMainSimulation() {
 	Object player = PrefabSystem::getInstance().createPlayer(true);
 	Object mainCamera = player.getChild(0);
 
-	Mesh perlin = PerlinNoiseMesh(100, 100, 2.0f, 3, 0.9f, 0, 12312);
+	
+	int perlinMeshID = MeshManager::addMesh(PerlinNoiseMesh(100, 100, 2.0f, 3, 0.9f, 0, 12312));
 	short perlinMat = MaterialManager::CreateMaterial(Material(3, 4, 0, 0xff));
 	Object perlinMesh = ECS::createObject();
 	perlinMesh.transform.scale = 4;
 	perlinMesh.transform.scale.y = 1;
 	perlinMesh.transform.position -= Vector3(50, 0, 50);
-	perlinMesh.AddComponent<RenderView>().mesh_index = perlin.id;
+	perlinMesh.AddComponent<RenderView>().mesh_index = perlinMeshID;
 	perlinMesh.GetComponent<RenderView>().materals[0] = perlinMat;
 	perlinMesh.AddComponent<TerrainCollider>().width = 100;
 	perlinMesh.GetComponent<TerrainCollider>().height = 100;
 	for(int i = 0; i < 100 * 100; i++) {
-		perlinMesh.GetComponent<TerrainCollider>().heightMap.push_back(perlin.vertex[i].pos.y);
+		perlinMesh.GetComponent<TerrainCollider>().heightMap.push_back(MeshManager::getMeshByID(perlinMeshID).vertices[i].pos.y);
 	}
 
 

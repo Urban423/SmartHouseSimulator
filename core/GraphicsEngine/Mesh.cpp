@@ -1,44 +1,64 @@
 #include "Mesh.h"
 #include "MeshManager.h"
 
-Mesh::Mesh(int *index, int index_size,
-           Vertex *vertex, int vertex_size,
-           unsigned int *materials, unsigned int number_of_materials)
-    : index(index), index_size(index_size),
-      vertex(vertex), vertex_size(vertex_size),
-      materials(materials), number_of_materials(number_of_materials)
-{
-    id = MeshManager::addMesh(*this);
+Mesh::Mesh(int* index, int index_size, Vertex* vertex, int vertex_size, unsigned int* materials, unsigned int number_of_materials) {
+    indices.assign(index, index + index_size);
+    vertices.assign(vertex, vertex + vertex_size);
+    this->materials.assign(materials, materials + number_of_materials); 
+    syncWithGPU();
+}
+
+Mesh::Mesh(Mesh&& mesh) noexcept : indices(std::move(mesh.indices)), vertices(std::move(mesh.vertices)), materials(std::move(mesh.materials)), vao(mesh.vao), iao(mesh.iao) {
+    mesh.vao = nullptr;
+    mesh.iao = nullptr;
 }
 
 Mesh::~Mesh() {
-    // delete[] index;
-    // delete[] vertex;
-    // delete[] materials;
-};
+    delete vao;
+    delete iao;
+}
 
-Mesh &Mesh::operator=(Mesh &&mesh)
-{
+Mesh& Mesh::operator=(Mesh&& mesh) noexcept {
     if (this != &mesh) {
-        delete[] index;
-        delete[] vertex;
-        delete[] materials;
+        delete vao;
+        delete iao;
 
-        index = mesh.index;
-        index_size = mesh.index_size;
-        vertex = mesh.vertex;
-        vertex_size = mesh.vertex_size;
-        materials = mesh.materials;
-        number_of_materials = mesh.number_of_materials;
+        indices = std::move(mesh.indices);
+        vertices = std::move(mesh.vertices);
+        materials = std::move(mesh.materials);
 
-        mesh.index = nullptr;
-        mesh.vertex = nullptr;
-        mesh.materials = nullptr;
+        vao = mesh.vao;
+        iao = mesh.iao;
+
+        mesh.vao = nullptr;
+        mesh.iao = nullptr;
     }
     return *this;
 }
 
-void Mesh::syncWithGPU() { id = MeshManager::addMesh(*this); }
+void Mesh::syncWithGPU() { 
+    if (!vao) {
+        vao = GraphicsEngine::createVertexArrayObject({
+            vertices.data(),
+            sizeof(Vertex),
+            static_cast<unsigned>(vertices.size())
+        });
+    }
+
+    if (!iao) {
+        iao = GraphicsEngine::createIndexArrayObject({
+            reinterpret_cast<unsigned int*>(indices.data()),
+            static_cast<unsigned>(indices.size()),
+            static_cast<unsigned>(materials.size()),
+            materials.data()
+        });
+    }
+}
+	
+void Mesh::setMeshOnPipeline() {
+    GraphicsEngine::setVertexArrayObject(vao);
+    GraphicsEngine::setIndexArrayObject(iao);
+}
 
 inline Vector2 calculateStringMeshSize(std::string& text, float glyphWidth, float glyphHeight, float letterSpacing, float lineSpacing, int& specialChars) {
     specialChars = 0;
@@ -87,29 +107,29 @@ void Mesh::buildTextMesh(std::string& text, float fontSize, float letterSpacing,
         float v0 = 1.0f - (cellY + 1) / 16.0f;
         float v1 = 1.0f - cellY / 16.0f;
 
-        vertex[v + 0].pos = {x, -fontSize - y, 0};
-        vertex[v + 1].pos = {x + fontSize, -fontSize - y, 0};
-        vertex[v + 2].pos = {x + fontSize, -y, 0};
-        vertex[v + 3].pos = {x, -y, 0};
+        vertices[v + 0].pos = {x, -fontSize - y, 0};
+        vertices[v + 1].pos = {x + fontSize, -fontSize - y, 0};
+        vertices[v + 2].pos = {x + fontSize, -y, 0};
+        vertices[v + 3].pos = {x, -y, 0};
         x += fontSize + letterSpacing;
 
-        vertex[v + 0].uv = {u0, v0};
-        vertex[v + 1].uv = {u1, v0};
-        vertex[v + 2].uv = {u1, v1};
-        vertex[v + 3].uv = {u0, v1};
+        vertices[v + 0].uv = {u0, v0};
+        vertices[v + 1].uv = {u1, v0};
+        vertices[v + 2].uv = {u1, v1};
+        vertices[v + 3].uv = {u0, v1};
 
-        vertex[v + 0].normal = {0, 0, 1};
-        vertex[v + 1].normal = {0, 0, 1};
-        vertex[v + 2].normal = {0, 0, 1};
-        vertex[v + 3].normal = {0, 0, 1};
+        vertices[v + 0].normal = {0, 0, 1};
+        vertices[v + 1].normal = {0, 0, 1};
+        vertices[v + 2].normal = {0, 0, 1};
+        vertices[v + 3].normal = {0, 0, 1};
 
-        index[ind + 0] = v + 0;
-        index[ind + 1] = v + 2;
-        index[ind + 2] = v + 1;
+        indices[ind + 0] = v + 0;
+        indices[ind + 1] = v + 2;
+        indices[ind + 2] = v + 1;
 
-        index[ind + 3] = v + 3;
-        index[ind + 4] = v + 2;
-        index[ind + 5] = v + 0;
+        indices[ind + 3] = v + 3;
+        indices[ind + 4] = v + 2;
+        indices[ind + 5] = v + 0;
         v += 4;
         ind += 6;
     }
@@ -120,12 +140,10 @@ Vector2 Mesh::calculateAndRebuildTextMesh(std::string& text, float fontSize, flo
     int charCount = text.size();
     Vector2 textSize = calculateStringMeshSize(text, fontSize, fontSize, letterSpacing, lineSpacing, specialChars);
 
-    vertex_size = (charCount - specialChars) * 4;
-    vertex = new Vertex[vertex_size];
-    index_size = (charCount - specialChars) * 6;
-    index = new int[index_size];
-    materials = new unsigned int[1];
-    materials[0] = index_size;
+    int indicesSize = (charCount - specialChars) * 6;
+    vertices.resize((charCount - specialChars) * 4);
+    indices.resize(indicesSize);
+    materials.resize(1, indicesSize);
 
     Vector2 offset = -textSize / 2;
     buildTextMesh(text, fontSize, letterSpacing, lineSpacing, offset);

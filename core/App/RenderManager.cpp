@@ -87,7 +87,8 @@ void RenderManager::init() {
 	unsigned int planeIndexCount = 6;
 	int planeMaterialCount = 1;
 
-	Mesh mesh((int*)planeInedxes, planeIndexCount, planePoints, planeVertexCount, &planeIndexCount, planeMaterialCount);
+	Mesh planeMesh((int*)planeInedxes, planeIndexCount, planePoints, planeVertexCount, &planeIndexCount, planeMaterialCount);
+	MeshManager::addMesh(planeMesh);
 
 	const char *files[] = {
 		"Models/cube.fbx",
@@ -95,6 +96,9 @@ void RenderManager::init() {
 	};
 	for (int i = 0; i < sizeof(files) / sizeof(const char *); i++) {
 		std::vector<Mesh> meshes = IOSystem::readFBX(files[i]);
+		for(auto& mesh : meshes) {
+			MeshManager::addMesh(mesh);
+		}
 	}
 }
 
@@ -178,7 +182,7 @@ void RenderManager::renderCamera(Camera &camera, int renderViewIndex)
 		GraphicsEngine::drawTriangles(number_of_triangles, nullptr);
 	}
 
-	//ui
+	// ui
 	// std::tie(width, height) = UILayout::getInstance().GetLayoutSize();
 	
 	
