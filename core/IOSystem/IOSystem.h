@@ -163,20 +163,14 @@ private:
 	unsigned char oldKeyBoardState[256];
 };
 
-enum WindowMode {
-    Windowmode,
-    Borderless,
-    Fullscreen
-};
-
 class IWindow {
 public:
-	virtual void create(const char* windowName, int width, int height, WindowMode state, bool vsync) = 0;
+	virtual void create(const char* windowName, int width, int height, bool fullscreen, bool vsync) = 0;
 	virtual void close() = 0;
 
 	virtual Rect getInnerSize() = 0;
 	virtual std::pair<int, int> getScreenSize() = 0;
-	virtual void setWindowMode(const WindowMode state) = 0;
+	virtual void setFullscreen(const bool state) = 0;
 	virtual void setSize(int width, int height) = 0;
 	virtual void setPosition(int x, int y)  = 0;
 	
@@ -246,6 +240,14 @@ public:
 	inline static IWindow& getWindow(int index = 0) { return *getInstance().windows[index]; };
 	inline static IPlatform& getPlatform() { return *getInstance().platform; };
 	inline static std::vector<std::pair<int, int>>& getSupportedResolutions() { return getInstance().supportedResolutions; }
+	inline static void onWindowResizeFinished() { getInstance().resized = true; }
+	inline static bool getWindowResizeFinished() { 
+		if(getInstance().resized) {
+			getInstance().resized = false; 
+			return true; 
+		}
+		return false;
+	}
 	inline static std::pair<int, int> getWindowSize() { 
 		Rect rect = getInstance().windows[0]->getInnerSize();
 		return {rect.right - rect.left, rect.bottom - rect.top};
@@ -259,6 +261,7 @@ private:
 	std::vector<IWindow*> windows;
 	IPlatform* platform;
 	Input input;
+	bool resized = true;
 	bool lockPointers = false;
 };
 

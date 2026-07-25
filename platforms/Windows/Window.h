@@ -9,12 +9,12 @@ typedef BOOL (WINAPI * PFNWGLSWAPINTERVALEXTPROC)(int);
 class Window: public IWindow {
 public:
 	~Window();
-	void create(const char* windowName, int width, int height, WindowMode state, bool vsync);
+	void create(const char* windowName, int width, int height, bool fullscreen, bool vsync);
 	void close();
 	
 	Rect getInnerSize();
 	std::pair<int, int> getScreenSize();
-	void setWindowMode(const WindowMode state);
+	void setFullscreen(const bool state);
 	void setSize(int width, int height);
 	void setPosition(int x, int y);
 	std::pair<int, int> getSize();

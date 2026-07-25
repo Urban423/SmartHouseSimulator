@@ -27,8 +27,7 @@ unsigned int GetIndex(unsigned int id)
 unsigned int TextureManager::GetTextureByID(unsigned int id)
 {
 	unsigned int index = GetIndex(id);
-	if (GetType(id) == TEXTURE)
-	{
+	if (GetType(id) == TEXTURE) {
 		if (index < textureManager->textures.size())
 			return textureManager->textures[index]->getID();
 	}
@@ -55,7 +54,7 @@ unsigned int TextureManager::CreateTexture(const TextureStruct desc) {
 	return MakeID(TEXTURE, true, index);
 }
 
-unsigned int TextureManager::CreateFrameBuffer()
+unsigned int TextureManager::CreateFrameBuffer(int width, int height)
 {
 	unsigned int index;
 	if (!textureManager->freeFramebufferIDs.empty())
@@ -68,7 +67,7 @@ unsigned int TextureManager::CreateFrameBuffer()
 	else
 	{
 		index = static_cast<unsigned int>(textureManager->frameBuffers.size());
-		textureManager->frameBuffers.push_back(new FrameBuffer());
+		textureManager->frameBuffers.push_back(new FrameBuffer(width, height));
 	}
 	return MakeID(FRAMEBUFFER, true, index);
 }
@@ -112,8 +111,7 @@ void TextureManager::SetRenderTarget(unsigned int id)
 void TextureManager::ResizeFrameBuffer(unsigned int id, int width, int height)
 {
 	unsigned int index = GetIndex(id);
-	if (GetType(id) == TEXTURE || id == -1)
-	{
+	if (GetType(id) == TEXTURE || id == -1) {
 		return;
 	}
 	textureManager->frameBuffers[index]->resize(width, height);

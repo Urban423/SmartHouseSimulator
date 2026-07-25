@@ -2,7 +2,7 @@
 #include "Physic.h"
 #include "IOSystem.h"
 #include "Transform.h"
-#include "PauseManager.h"
+#include "OverlayManager.h"
 #include "ClientServerSystem.h"
 
 class InputComponent: public Component {
@@ -10,8 +10,8 @@ public:
 	Input input;
 
 	void Update() {
-		if (input.pausePressed) PauseManager::Toggle();
-		PauseManager::Update();
+		if (input.pausePressed) OverlayManager::Toggle();
+		OverlayManager::Update();
 	}
 };
 
@@ -32,7 +32,7 @@ public:
 	}
 
 	void FixedUpdate() {
-		if (PauseManager::IsPaused()) return;
+		// if (OverlayManager::IsPaused()) return;
 		Input& input = object.GetComponent<InputComponent>().input;
 
 		Rigidbody& rb = object.GetComponent<Rigidbody>();
@@ -61,7 +61,7 @@ public:
 	}
 
 	void Update() {
-		if (PauseManager::IsPaused()) return;
+		// if (OverlayManager::IsPaused()) return;
 		Input& input = object.GetComponent<InputComponent>().input;
 
 		if(IOSystem::getKeyBoard().GetKeyDown(KeyCode_S) && IOSystem::getKeyBoard().GetKey(KeyCode_Left_CTRL)) {
@@ -82,11 +82,14 @@ public:
 		//interact
 		if(input.actionPressed) {
 			RayHit hit;
-			if (PhysicSystem::RayCast(object.transform.position, object.transform.rotation * Vector3(0, 0, -1), 100.0f, hit)) {
-				obj.transform.position = hit.point;
-				printf("%d\n", hit.collider->object.HasComponent<Rigidbody>());
-			}
+			// if (PhysicSystem::RayCast(object.transform.position, object.transform.rotation * Vector3(0, 0, -1), 100.0f, hit)) {
+				// obj.transform.position = hit.point;
+				// printf("%d\n", hit.collider->object.HasComponent<Rigidbody>());
+			// }
 		}
+
+		if(IOSystem::getKeyBoard().GetKeyDown(KeyCode_P)) ClientServerSystem::getInstance().connect("127.0.0.1", 7777);
+		if(IOSystem::getKeyBoard().GetKeyDown(KeyCode_O)) ClientServerSystem::getInstance().host(7777);
 	}
 };
 
@@ -100,6 +103,11 @@ inline static void InputComponentUpdate() {
 		Span<CameraControlSystem> players = ECS::GetComponents<CameraControlSystem>();
 		ic = &players[0].object.GetComponent<InputComponent>();
 	}
-	ic->input = IOSystem::getInput();
+	if (!OverlayManager::IsPaused()) {
+		ic->input = std::move(IOSystem::getInput());
+	}
+	else {
+		ic->input = std::move(Input());
+	}
 	ic->Update();
 }

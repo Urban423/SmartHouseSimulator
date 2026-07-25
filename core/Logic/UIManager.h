@@ -45,15 +45,16 @@ inline UISizeFlags operator&(UISizeFlags a, UISizeFlags b) { return static_cast<
 class UISystem;
 struct UIElement {
 protected:
-    float width = 200;
-    float height = 200;
+    float minWidth = 200;
+    float minHeight = 200;
 
-    float computedWidth = width;
-    float computedHeight = height;
+    float computedWidth = minWidth;
+    float computedHeight = minHeight;
 
     Vector2 offset;
 public:
-    short padding = 0;
+    Vector4 padding = 0;
+    char spacing = 0;
 	char layout = 0;
     Anchor anchor = Anchor::Center;
     Anchor pivot = Anchor::Center; 
@@ -66,20 +67,20 @@ public:
     char depth = 0;
     char weight = 1;
 
-
-    float getWidth() const { return width; }
-    float getHeight() const { return height; }
+    float getWidth() const { return minWidth; }
+    float getHeight() const { return minHeight; }
+    Vector2 getSize() { return { minWidth, minHeight }; }
     inline bool HasFlag(UISizeFlags value, UISizeFlags flag) { return static_cast<uint8_t>(value) & static_cast<uint8_t>(flag); }
     inline bool isFill(char axis) { return axis == 0 ? HasFlag(widthFlags, UISizeFlags::Fill) : HasFlag(heightFlags, UISizeFlags::Fill); }
 
     void setWidth(float value) {
         widthFlags = UISizeFlags::Fixed;
-        width = value;
+        minWidth = value;
         computedWidth = value;
     }
     void setHeight(float value) {
         heightFlags = UISizeFlags::Fixed;
-        height = value;
+        minHeight = value;
         computedHeight = value;
     }
     void setWidth(UISizeFlags flags) { widthFlags = flags; }
@@ -98,6 +99,8 @@ public:
 
     inline void setOffset(Vector2 newOffset) { offset = newOffset; } 
     inline void setOffset(Vector2 newOffset, char newDepth) { offset = newOffset; depth = newDepth; } 
+    inline void setOffset(float value, char axis) {  offset[axis] = value; } 
+    inline void setDepth(char newDepth) {  depth = newDepth; } 
     inline Vector3 getOffset() { return { offset.x, offset.y, -static_cast<float>(depth) }; }
     inline bool contain(Vector2 point) {  
         Vector2 half = { computedWidth * 0.5f, computedHeight * 0.5f };
@@ -108,7 +111,7 @@ public:
     }
 };
 
-
+struct UILayout : public Component {};
 
 struct UIBox : public Component, public UIElement {};
 
@@ -136,7 +139,7 @@ public:
             Mesh mesh;
             meshID = MeshManager::addMesh(mesh);
         }
-        Vector2 newSize = MeshManager::getMeshByID(meshID).calculateAndRebuildTextMesh(text, fontSize, 0, 0);
+        Vector2 newSize = MeshManager::getMeshByID(meshID).calculateAndRebuildTextMesh(text, fontSize, -9, 0);
         setSize(newSize.x, newSize.y);
     }
 	inline int getId() { return meshID; }
@@ -172,10 +175,14 @@ struct RadioGroup: public Component {
     std::function<void(int)> onValueSelect = nullptr;
 };
 
-struct Slider : public Interactable {
+struct Slider : public Component {
+    float minValue = 0.0f;
+    float maxValue = 1.0f;
     float value = 0.5f;
-    bool dragging = false;
 
+    int fixedPositions = 0;
+    bool dragging = false;
+    std::function<void(float)> onDrag = nullptr;
     std::function<void(float)> onDragEnd = nullptr;
     bool calculate();
 };
@@ -195,7 +202,7 @@ struct InputField : public Interactable {
 UIElement* TryGetUIElement(int objectID);
 class UISystem {
 public:
-    void Rebuild(Object& root);
+    void Rebuild(Object& root, int newWidth, int newHeight, float uiScale);
     void Update();
 
     static UISystem& getInstance() {

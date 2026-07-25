@@ -9,7 +9,7 @@
 
 void Client::create() {
 	Settings& s = SettingsSystem::Load();
-	IOSystem::addWindow(new Window).create("Sanya lol", 1000, 500, s.winMode, s.vsync);
+	IOSystem::addWindow(new Window).create("Sanya lol", 960, 540, s.fullscreen, s.vsync);
 	IOSystem::addkeyBorad(new keyBoard).create();
 	IOSystem::addPlatform(new WindowsPlatform).create();
     IOSystem::getInstance().create();

@@ -62,6 +62,45 @@ void UISystem::Update() {
         int objID = interactable.object.getID();
         int parentID = ECS::GetHierarchy().getParent(objID);
 
+
+
+        if (ECS::HasComponent<Slider>(objID) || parentID != -1 && ECS::HasComponent<Slider>(parentID)) {
+            Slider* slider = nullptr;
+            if(ECS::HasComponent<Slider>(objID)) {
+                slider = &ECS::GetComponent<Slider>(objID);
+            } else slider = &ECS::GetComponent<Slider>(parentID);
+            
+            if (inside && clickDown) slider->dragging = true;
+
+            if(slider->dragging) {
+                if (click) {
+                    UIElement* ui = TryGetUIElement(slider->object.getID());
+                    Vector2 size = ui->getComputedSize();
+                    Vector2 center = ui->getOffset();
+                    // float t = (mousePos.x - (center.x - size.x * 0.5f)) / size.x;
+
+                    UIElement* blob = TryGetUIElement(slider->object.getChild(0).getID());
+                    Vector2 blobSize = blob->getComputedSize();
+                    float left  = center.x - size.x * 0.5f + blobSize.x * 0.5f;
+                    float right = center.x + size.x * 0.5f - blobSize.x * 0.5f;
+                    float t = (mousePos.x - left) / (right - left);
+
+                    t = clamp(0.0f, 1.0f, t);
+                    slider->value = slider->minValue + t * (slider->maxValue - slider->minValue);
+                    if (slider->fixedPositions > 1) {
+                        float step = (slider->maxValue - slider->minValue) / (slider->fixedPositions - 1);
+                        slider->value = slider->minValue + std::round((slider->value - slider->minValue) / step) * step;
+                    }
+                    if (slider->onDrag) slider->onDrag(slider->value);
+                    slider->calculate();
+                }
+                else {
+                    slider->dragging = false;
+                    if (slider->onDragEnd) slider->onDragEnd(slider->value);
+                }
+            }
+        }
+
         if (ECS::HasComponent<Toggle>(objID)) {
             Toggle& toggle = ECS::GetComponent<Toggle>(objID);
             if (interactable.pressed && clickDown) {
@@ -107,36 +146,6 @@ void UISystem::Update() {
         }
     }
 
-
-    Span<Slider> uiSliders = ECS::GetComponents<Slider>();
-    for(auto& slider : uiSliders) {
-        bool insideTrack = updateInteractable(slider, mousePos);
-
-        Object blobObject = slider.object.getChild(0);
-        UIElement* blobUI = TryGetUIElement(blobObject.getID());
-        bool inside = insideTrack || blobUI && blobUI->contain(mousePos);
-
-        if(inside) cursor = CursorType::Hand;
-        if (inside && clickDown) slider.dragging = true;
-
-        if (slider.dragging) {
-            if (click) {
-                int objID = slider.object.getID();
-                UIElement* ui = TryGetUIElement(objID);
-                Vector2 size = ui->getComputedSize();
-                Vector2 center = ui->getOffset();
-                float left = center.x - size.x * 0.5f;
-                float t = (mousePos.x - (center.x - size.x * 0.5f)) / size.x;
-
-                slider.value = clamp(0.0f, 1.0f, t);
-                slider.calculate();
-            }
-            else {
-                slider.dragging = false;
-                if (slider.onDragEnd) slider.onDragEnd(slider.value);
-            }
-        }
-    }
 
     if(!focusedInputField.valid()) {
         Span<InputField> inputFields = ECS::GetComponents<InputField>();
@@ -208,23 +217,13 @@ bool Slider::calculate() {
     UIElement* blob = TryGetUIElement(blobID);
     if(!blob) return false;
 
-    float x = center.x + (value - 0.5f) * size.x;
-    blob->setOffset(Vector2(x, blob->getOffset().y));
+    float t = (value - minValue) / (maxValue - minValue);
+    // float x = center.x + (t - 0.5f) * size.x;
+
+    Vector2 blobSize = blob->getComputedSize();
+    float left  = center.x - size.x * 0.5f + blobSize.x * 0.5f;
+    float right = center.x + size.x * 0.5f - blobSize.x * 0.5f;
+    float x = left + (right - left) * t;
+    blob->setOffset({x, blob->getOffset().y});
     return true;
 }
-
-
-
-// else if(c == 13) { // enter
-//     char command[32];
-//     char ip[64];
-//     int port;
-//     // ClientServerSystem::getInstance().connect("127.0.0.1", 7777);
-//     if (sscanf(textViews[0].text.c_str(), "%31s %63s %d", command, ip, &port) == 3) {
-//         // if (strcmp(command, "connect") == 0) ClientServerSystem::getInstance().connect(ip, port);
-//     }
-//     textViews[0].text.clear();
-//     continue;
-// }
-// if(IOSystem::getKeyBoard().GetKeyDown(KeyCode_P)) ClientServerSystem::getInstance().connect("127.0.0.1", 7777);
-// if(IOSystem::getKeyBoard().GetKeyDown(KeyCode_O)) ClientServerSystem::getInstance().host(7777);

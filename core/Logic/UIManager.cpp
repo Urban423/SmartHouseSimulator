@@ -8,8 +8,6 @@ UIElement* TryGetUIElement(int objectID) {
     return nullptr;
 }
 
-
-
 Vector2 GetAnchorOffset(Anchor anchor, Vector2 viewPortSize) {
     float width = viewPortSize.x / 2;
     float height = viewPortSize.y / 2;
@@ -29,11 +27,12 @@ Vector2 GetAnchorOffset(Anchor anchor, Vector2 viewPortSize) {
     return {0, 0};
 }
 
-inline bool calculateAxisSize(int objID, char axis, char layoutDirection, short padding, float& out) {
+inline bool calculateAxisSize(int objID, char axis, char layoutDirection, Vector2 padding, char spacing, float& out) {
     const std::vector<int>& childrenID = ECS::GetHierarchy().getChildren(objID);
     int childrenCount = childrenID.size();
-    if(childrenCount == 0) return false;
-
+    if(childrenCount == 0) {
+        return false;
+    }
 
     int uiElementsCounter = 0;
     float maxAxisSize = 0;
@@ -50,27 +49,30 @@ inline bool calculateAxisSize(int objID, char axis, char layoutDirection, short 
     if(axis != layoutDirection) {
         uiElementsCounter = 1;
     }
-    newAxisSize += (uiElementsCounter + 1) * padding;
+    newAxisSize += padding[0] + padding[1] + spacing * (uiElementsCounter - 1);
     out = newAxisSize;
     return true;
 }
 
-inline void calculateAxisGrow(int objID, char axis, Vector2 uiSize, short padding, char layoutDirection) {
-    float remainSize = uiSize[axis] - padding;
+inline void calculateAxisGrow(int objID, char axis, Vector2 uiSize, Vector2 padding, char spacing, char layoutDirection) {
+    float parentSize = uiSize[axis] - padding[0] - padding[1];
+    float remainSize = parentSize;
     char weightSum = 0;
+    int counter = 0;
     bool mainAxis = axis == layoutDirection;
     const std::vector<int>& childrenID = ECS::GetHierarchy().getChildren(objID);
     if(mainAxis) {
         for(auto childID: childrenID) {
             UIElement* ui = TryGetUIElement(childID);
             if(!ui) continue;
-            
+            if (ECS::HasComponent<UIPopup>(childID)) continue;
+
+            counter++;
             if(ui->isFill(axis)) weightSum += ui->weight;
             remainSize -= ui->getComputedSize()[axis];
-            remainSize -= padding;
         }
+        if(counter > 0) remainSize -= spacing * (counter - 1);
     }
-    if(remainSize <= 0) return;
     
     for(auto childID: childrenID) {
         UIElement* ui = TryGetUIElement(childID);
@@ -78,101 +80,87 @@ inline void calculateAxisGrow(int objID, char axis, Vector2 uiSize, short paddin
         
         if(ui->isFill(axis)) {
             Vector2 size = ui->getComputedSize();
-            if (mainAxis) size[axis] += remainSize * ui->weight / weightSum;
-            else size[axis] = remainSize - padding;
+
+            if (ECS::HasComponent<UIPopup>(childID)) {
+                size[axis] = parentSize;
+            }
+            else {
+                if (mainAxis) size[axis] += remainSize * ui->weight / weightSum;
+                else size[axis] = remainSize;
+            }
             ui->setComputedSize(size);
         }
     }
 }
 
-template<typename It>
-inline void placeRow(It begin, It end, Vector2 startOffset, float rowSize, Vector2 parentPos, Vector2 parentSize, short padding, char axis, char depth, UIAlignFlags alignXFlags, UIAlignFlags alignYFlags) {
-    Vector2 localOffset = startOffset;
-    float spacing = padding;
-    float available = parentSize[axis] - padding;
-    float rowHeight = parentSize[!axis] - 2 * padding;
-
-    UIAlignFlags mainFlags  = (axis == 0) ? alignXFlags : alignYFlags;
-    UIAlignFlags crossFlags = (axis == 0) ? alignYFlags : alignXFlags;
-    if(mainFlags == UIAlignFlags::Center) localOffset[axis] += (available - rowSize) * 0.5f;
-    else if(mainFlags == UIAlignFlags::End) localOffset[axis] += (available - rowSize);
-    else if (mainFlags == UIAlignFlags::Justify) {
-        size_t count = std::distance(begin, end);
-        if (count > 1) spacing = (parentSize[axis] - rowSize) / (count - 1);
-    }
-
-    for (; begin != end; ++begin) {
-        UIElement* ui = TryGetUIElement(*begin);
-        if (!ui) continue;
-
-        bool absolute = ui->direction == Direction::Absolute;
-        bool popup = ECS::HasComponent<UIPopup>(*begin);
-        if(absolute || popup) {
-            ui->setOffset(parentPos + GetAnchorOffset(ui->anchor, parentSize) - GetAnchorOffset(ui->pivot, ui->getComputedSize()), depth);
-            continue;
-        }
+inline void calculateMainAxis(const std::vector<int>& childrenID, char axis, Vector2 parentSize, Vector2 padding, float spacing, bool overflow, UIAlignFlags alignAxisFlags) {
+    float parentAxisSize = parentSize[axis];
+    float rowSize = 0;
+    int count = 0;
+    for (auto childID : childrenID) {
+        UIElement* ui = TryGetUIElement(childID);
+        if(!ui) continue;
+        if(ECS::HasComponent<UIPopup>(childID)) continue;
 
         Vector2 childSize = ui->getComputedSize();
-
-        float crossOffset = startOffset[!axis];
-        if (crossFlags == UIAlignFlags::Center) crossOffset += (rowHeight - childSize[!axis]) * 0.5f;
-        else if (crossFlags == UIAlignFlags::End) crossOffset += rowHeight - childSize[!axis];
-
-        Vector2 pos = localOffset;
-        pos[!axis] = crossOffset;
-        ui->setOffset(
-            Vector2(pos.x, -pos.y)
-            + parentPos
-            + GetAnchorOffset(Anchor::TopLeft, parentSize)
-            - GetAnchorOffset(Anchor::TopLeft, childSize),
-            depth);
-
-        localOffset[axis] += childSize[axis] + spacing;
+        count++;
+        rowSize += childSize[axis];
     }
-}
+    rowSize += (count - 1) * spacing;
 
-inline void calculateAxisPos(int objID, char axis, Vector2 parentPos, Vector2 parentSize, short padding, char depth, bool overflow, bool isAbsolute, UIAlignFlags alignXFlags, UIAlignFlags alignYFlags) {
-    const std::vector<int>& childrenID = ECS::GetHierarchy().getChildren(objID);
-    
-    Vector2 localOffset(padding, padding);
-    Vector2 rowStartOffset;
-    rowStartOffset[axis] = padding;
-    auto rowBegin = childrenID.begin();
-    float rowHeight = 0;
-    for (auto it = childrenID.begin(); it != childrenID.end(); ++it) {
-        UIElement* ui = TryGetUIElement(*it);
+    float rowOffset = 0;
+    if(alignAxisFlags == UIAlignFlags::Start) rowOffset = padding[0];
+    else if(alignAxisFlags == UIAlignFlags::Center) rowOffset = padding[0] + (parentAxisSize - rowSize) * 0.5f - padding[1];
+    else if(alignAxisFlags == UIAlignFlags::End) rowOffset += (parentAxisSize - rowSize - padding[1]);
+    else if (alignAxisFlags == UIAlignFlags::Justify) {
+        rowOffset = padding[0];
+        if (count > 1) spacing = (parentAxisSize - rowSize - padding[1] - padding[0]) / (count - 1);
+    }
+
+    for (auto childID : childrenID) {
+        UIElement* ui = TryGetUIElement(childID);
         if(!ui) continue;
+        if(ECS::HasComponent<UIPopup>(childID)) continue;
 
-        bool absolute = ui->direction == Direction::Absolute;
-        bool popup = ECS::HasComponent<UIPopup>(*it);
-        if(absolute || popup) {
-            ui->setOffset(parentPos + GetAnchorOffset(ui->anchor, parentSize) - GetAnchorOffset(ui->pivot, ui->getComputedSize()), depth);
-        }
-        else {
-            Vector2 childSize = ui->getComputedSize();
-            if (!overflow && localOffset[axis] + childSize[axis] + padding > parentSize[axis]) {
-                rowStartOffset[!axis] = localOffset[!axis];
-                placeRow(rowBegin, it, rowStartOffset, localOffset[axis], parentPos, parentSize, padding, axis, depth, alignXFlags, alignYFlags);
-
-                rowBegin = it;
-                localOffset[axis] = padding;
-                localOffset[!axis] += rowHeight + padding;
-                rowHeight = 0;
-            }
-            localOffset[axis] += childSize[axis] + padding;
-            rowHeight = std::max(rowHeight, childSize[!axis]);
-        }
+        Vector2 childSize = ui->getComputedSize();
+        ui->setOffset(rowOffset, axis);
+        rowOffset += childSize[axis] + spacing;
     }
-
-    rowStartOffset[!axis] = localOffset[!axis];
-    if(!isAbsolute) placeRow(rowBegin, childrenID.end(), rowStartOffset, localOffset[axis], parentPos, parentSize, padding, axis, depth, alignXFlags, alignYFlags);
 }
 
+inline void calculateCrossAxis(const std::vector<int>& childrenID, char axis, Vector2 parentSize, Vector2 padding, float spacing, bool overflow, UIAlignFlags alignAxisFlags) {
+    float parentAxisSize = parentSize[axis];
+    float rowSize = 0;
+    int count = 0;
+    for (auto childID : childrenID) {
+        UIElement* ui = TryGetUIElement(childID);
+        if(!ui) continue;
+        if(ECS::HasComponent<UIPopup>(childID)) continue;
 
-void UISystem::Rebuild(Object& root) {
+        Vector2 childSize = ui->getComputedSize();
+        float offset = 0.0f;
+        switch (alignAxisFlags) {
+            case UIAlignFlags::Center:
+                offset = padding[0] + (parentAxisSize - padding[0] - padding[1] - childSize[axis]) * 0.5f;
+                break;
+
+            case UIAlignFlags::End:
+                offset = parentAxisSize - padding[1] - childSize[axis];
+                break;
+
+            default: offset = padding[0]; break;
+        }
+        ui->setOffset(offset, axis);
+    }
+}
+
+void UISystem::Rebuild(Object& root, int newWidth, int newHeight, float uiScale) {
     std::vector<int> bottomToTop;
     std::stack<int> dfs;
     dfs.push(root.getID());
+
+    UIElement* rootUI = TryGetUIElement(root.getID());
+    rootUI->setSize(newWidth, newHeight);
 
     while(!dfs.empty()) {
         int objID = dfs.top();
@@ -188,19 +176,25 @@ void UISystem::Rebuild(Object& root) {
         UIElement* ui = TryGetUIElement(objID);
         if(!ui) continue;
 
+        if(!ECS::HasComponent<UIText>(objID)) {
+            ui->setComputedWidth(ui->getWidth());
+            ui->setComputedHeight(ui->getHeight());
+        }
         char direction = ui->direction == Direction::Vertical;
-        short padding = ui->padding;
+        Vector4 padding = ui->padding * uiScale;
+        float spacing = ui->spacing * uiScale;
         if (ui->HasFlag(ui->widthFlags, UISizeFlags::Wrap)) {
             float width;
-            if(calculateAxisSize(objID, 0, direction, padding, width)) {
+            if(calculateAxisSize(objID, 0, direction, {padding[0], padding[1]}, spacing, width)) {
                 ui->setComputedWidth(width);
+            } else {
             }
         }
         if (ui->HasFlag(ui->heightFlags, UISizeFlags::Wrap)) {
             float height;
-            if(calculateAxisSize(objID, 1, direction, padding, height)) {
+            if(calculateAxisSize(objID, 1, direction, {padding[2], padding[3]}, spacing, height)) {
                 ui->setComputedHeight(height);
-            }
+            } 
         }
     }
 
@@ -210,10 +204,11 @@ void UISystem::Rebuild(Object& root) {
         if(!ui) continue;
         
         char direction = ui->direction == Direction::Vertical;
-        short padding = ui->padding;
+        Vector4 padding = ui->padding * uiScale;
+        float spacing = ui->spacing * uiScale;
         Vector2 uiSize = ui->getComputedSize();
-        calculateAxisGrow(objID, 0, uiSize, padding, direction);
-        calculateAxisGrow(objID, 1, uiSize, padding, direction);
+        calculateAxisGrow(objID, 0, uiSize, {padding[0], padding[1]}, spacing, direction);
+        calculateAxisGrow(objID, 1, uiSize, {padding[2], padding[3]}, spacing, direction);
     }
 
     for(int i = 0; i < bottomToTop.size(); ++i) {
@@ -221,12 +216,35 @@ void UISystem::Rebuild(Object& root) {
         UIElement* ui = TryGetUIElement(objID);
         if(!ui) continue;
 
-        char direction = ui->direction == Direction::Vertical;
-        short padding = ui->padding;
+        const std::vector<int>& childrenID = ECS::GetHierarchy().getChildren(objID);
+        char mainDirection = ui->direction == Direction::Vertical;
+        char crossDirection = 1 - mainDirection;
+        Vector4 padding = ui->padding * uiScale;
+        float spacing = ui->spacing * uiScale;
         char depth = ui->depth + 1;
         Vector2 parentSize = ui->getComputedSize();
         Vector2 parentPos = ui->getOffset();
-        calculateAxisPos(objID, direction, parentPos, parentSize, padding, depth, ui->overflow, ui->direction == Direction::Absolute, ui->alignX, ui->alignY);
+        UIAlignFlags flags[2] = { ui->alignX, ui->alignY };
+        calculateMainAxis(childrenID,   mainDirection, parentSize, {padding[mainDirection * 2],  padding[mainDirection * 2 + 1]},  spacing, ui->overflow, flags[mainDirection] );
+        calculateCrossAxis(childrenID, crossDirection, parentSize, {padding[crossDirection * 2], padding[crossDirection * 2 + 1]}, spacing, ui->overflow, flags[crossDirection]);
+
+        for(auto childID : childrenID) {
+            UIElement* childUI = TryGetUIElement(childID);
+            if(!childUI) continue;
+
+
+            Vector2 childSize = childUI->getComputedSize();
+            Vector2 offset = childUI->getOffset();
+            if(ECS::HasComponent<UIPopup>(childID)) {
+                offset = parentPos + GetAnchorOffset(childUI->anchor, parentSize) - GetAnchorOffset(childUI->pivot, childSize);
+            }
+            else {
+                offset.y *= -1;
+                offset += parentPos + GetAnchorOffset(Anchor::TopLeft, parentSize) - GetAnchorOffset(Anchor::TopLeft, childSize);
+            }
+            childUI->setOffset(offset);
+            childUI->setDepth(depth);
+        }
     }
 
     Span<Slider> uiSliders = ECS::GetComponents<Slider>();

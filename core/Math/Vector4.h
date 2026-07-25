@@ -6,6 +6,7 @@ class Vector4
 {
 public:
 	Vector4();
+	Vector4(float value): x(value), y(value), z(value), w(value) {}
 	Vector4(float x, float y, float z, float w);
 	//~Vector4();
 
@@ -18,6 +19,9 @@ public:
 			case(2): { return z; }
 		}
 		return w;
+	}
+	inline Vector4 operator*(float scale) {
+		return {x * scale, y * scale, z * scale, w * scale};
 	}
 public:
 	float x = 0;

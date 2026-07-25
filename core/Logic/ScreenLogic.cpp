@@ -22,7 +22,7 @@ void createObjectCopy(Vector3 newPos, Vector3 newScale, Object original) {
 	Object newCamera = ECS::createObject();
 	newCamera.AddComponent<Camera>().color = Color(light, light, light);
 	newCamera.GetComponent<Camera>().renderLayout = 2;
-	newCamera.GetComponent<Camera>().frameBufferIndex = TextureManager::CreateFrameBuffer();
+	newCamera.GetComponent<Camera>().frameBufferIndex = TextureManager::CreateFrameBuffer(100, 100);
 
 	Material copyMat = MaterialManager::Get(original.GetComponent<RenderView>().materals[0]);
 	copyMat.texture_index = newCamera.GetComponent<Camera>().frameBufferIndex;

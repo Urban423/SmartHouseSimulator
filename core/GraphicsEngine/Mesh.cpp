@@ -37,20 +37,29 @@ Mesh& Mesh::operator=(Mesh&& mesh) noexcept {
 }
 
 void Mesh::syncWithGPU() { 
+    if (vao) {
+        vao->destroy();
+        delete vao;
+        vao = nullptr;
+    }
+    if (iao) {
+        iao->destroy();
+        delete iao;
+        iao = nullptr;
+    }
+    
     if (!vao) {
         vao = GraphicsEngine::createVertexArrayObject({
             vertices.data(),
             sizeof(Vertex),
-            static_cast<unsigned>(vertices.size())
+            static_cast<unsigned int>(vertices.size())
         });
     }
 
     if (!iao) {
         iao = GraphicsEngine::createIndexArrayObject({
             reinterpret_cast<unsigned int*>(indices.data()),
-            static_cast<unsigned>(indices.size()),
-            static_cast<unsigned>(materials.size()),
-            materials.data()
+            static_cast<unsigned int>(indices.size())
         });
     }
 }
@@ -143,11 +152,11 @@ Vector2 Mesh::calculateAndRebuildTextMesh(std::string& text, float fontSize, flo
     int indicesSize = (charCount - specialChars) * 6;
     vertices.resize((charCount - specialChars) * 4);
     indices.resize(indicesSize);
-    materials.resize(1, indicesSize);
+    materials.resize(1);
+    materials[0] = indicesSize;
 
     Vector2 offset = -textSize / 2;
     buildTextMesh(text, fontSize, letterSpacing, lineSpacing, offset);
-    
     syncWithGPU();
     return textSize;
 }

@@ -53,7 +53,7 @@ void createMainSimulation() {
 		physCube.AddComponent<NetworkIdentity>();
 	}
 
-	PauseManager::Create();
+	OverlayManager::Create();
 	Object player = PrefabSystem::getInstance().createPlayer(true);
 	Object mainCamera = player.getChild(0);
 
@@ -201,6 +201,25 @@ void Scene::Start()
 }
 
 void Scene::Update() {
+	if(IOSystem::getWindowResizeFinished()) {
+		Rect window = IOSystem::getWindow().getInnerSize();
+		Rect renderSize = window * SettingsSystem::GetSettings().resolution;
+
+		int width = renderSize.width();
+		int height = renderSize.height();
+		Span<Camera> cameras = ECS::GetComponents<Camera>();
+		for(auto& cam : cameras) {
+			TextureManager::ResizeFrameBuffer(cam.frameBufferIndex, width, height);
+		}
+
+		constexpr float REFERENCE_WIDTH  = 1920.0f;
+		constexpr float REFERENCE_HEIGHT = 1080.0f;
+		float uiScale = std::min(window.width() / REFERENCE_WIDTH, window.height() / REFERENCE_HEIGHT );
+		Span<UILayout> uiLayouts = ECS::GetComponents<UILayout>();
+		for(auto & layout: uiLayouts) {
+			UISystem::getInstance().Rebuild(layout.object, window.width(), window.height(), uiScale);
+		}
+	}
 	InputComponentUpdate();
 
 	Span<ScreenLogic> screenLogics = ECS::GetComponents<ScreenLogic>();

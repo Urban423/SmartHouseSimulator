@@ -71,7 +71,7 @@ void ClientServerSystem::handleHostMessage(MessageView& msg) {
             break;
         }
 
-        case MSGType::Input: { 
+        case MSGType::Input: {
             NetInput ni;
             memcpy(&ni, msg.data, sizeof(NetInput));
             Input input = ToInput(ni);
@@ -234,6 +234,7 @@ void ClientServerSystem::FixedUpdate() {
         NetworkManager::getInstance().pushMessage((char*)snapshot.data.data(), snapshot.data.size(), (char)MSGType::Snapshot);
     } else {
         if(netState != NetState::InGame) return;
+        if(OverlayManager::IsPaused()) return;
         NetInput ni = ToNetInput(IOSystem::getInput(), localPlayer.transform.rotation);
         ni.netID = localPlayer.GetComponent<NetworkIdentity>().getID();
         NetworkManager::getInstance().pushMessage((char*)&ni, sizeof(NetInput), (char)MSGType::Input);

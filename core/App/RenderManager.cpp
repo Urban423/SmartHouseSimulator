@@ -174,6 +174,7 @@ void RenderManager::renderCamera(Camera &camera, int renderViewIndex)
 
 		// set shape
 		int mesh_index = textView.getId();
+		if(mesh_index == -1) continue;
 
 		// set material
 		unsigned int number_of_mats = MeshManager::setMeshById(mesh_index);
@@ -235,6 +236,7 @@ void RenderManager::renderCamera(Camera &camera, int renderViewIndex)
 			GraphicsEngine::setMatrix(shaders[text_shader_index], worlds[objectID]);
 			
 			int uiTextMesh = uiText.getId();
+			if(uiTextMesh == -1) continue;
 			unsigned int number_of_mats = MeshManager::setMeshById(uiTextMesh);
 			int number_of_triangles = MeshManager::getNumberOfPolygonsByMaterialID(uiTextMesh, 0);
 			GraphicsEngine::drawTriangles(number_of_triangles, nullptr);
@@ -289,6 +291,7 @@ void RenderManager::renderCamera(Camera &camera, int renderViewIndex)
 		GraphicsEngine::setMatrix(shaders[text_shader_index], worlds[objectID]);
 		
 		int uiTextMesh = uiText.getId();
+		if(uiTextMesh == -1) continue;
 		unsigned int number_of_mats = MeshManager::setMeshById(uiTextMesh);
 		int number_of_triangles = MeshManager::getNumberOfPolygonsByMaterialID(uiTextMesh, 0);
 		GraphicsEngine::drawTriangles(number_of_triangles, nullptr);

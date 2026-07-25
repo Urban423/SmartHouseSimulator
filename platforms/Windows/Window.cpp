@@ -6,6 +6,10 @@ Window* win;
 
 LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
 	switch (msg) {
+        case WM_EXITSIZEMOVE: {
+            IOSystem::onWindowResizeFinished();
+            break;
+        }
 		case WM_DESTROY: {
 			PostQuitMessage(0);
 			win->onDestroy();
@@ -13,8 +17,8 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
 		}
 		case WM_GETMINMAXINFO: {
             MINMAXINFO* pMinMax = (MINMAXINFO*)lParam;
-            pMinMax->ptMinTrackSize.x = 400;
-            pMinMax->ptMinTrackSize.y = 300;
+            pMinMax->ptMinTrackSize.x = 480;
+            pMinMax->ptMinTrackSize.y = 270;
             return 0;
         }
 		case WM_CHAR: {
@@ -34,7 +38,7 @@ Window::~Window() { DestroyWindow(_hwnd); }
 
 void Window::close() {}
 
-void Window::create(const char* windowName, int width, int height, WindowMode state, bool vsync) {
+void Window::create(const char* windowName, int width, int height, bool fullscreen, bool vsync) {
 	win = this;
 	this->vsync = vsync;
 	
@@ -74,7 +78,7 @@ void Window::create(const char* windowName, int width, int height, WindowMode st
 	);
 
 	if (!_hwnd) onDestroy();
-	setWindowMode(state);
+	setFullscreen(fullscreen);
 
 	ShowWindow(_hwnd, SW_SHOW);
 	UpdateWindow(_hwnd);
@@ -121,84 +125,23 @@ std::pair<int, int> Window::getScreenSize() {
 	return {screen_width, screen_height};
 }
 
-void Window::setWindowMode(WindowMode mode) {
-    RECT windowRect;
-	GetClientRect(_hwnd, &windowRect); 
-    LONG style = GetWindowLong(_hwnd, GWL_STYLE);
-    LONG exStyle = GetWindowLong(_hwnd, GWL_EXSTYLE);
-
-    if (wasFullscreen && mode != WindowMode::Fullscreen) {
-        ChangeDisplaySettings(nullptr, 0);
-        wasFullscreen = false;
-    }
-
-    switch (mode) {
-		case WindowMode::Windowmode: {
-			if (windowRectSaved) {
-				style &= ~WS_POPUP;
-				style |= WS_OVERLAPPEDWINDOW;
-
-				exStyle &= ~WS_EX_TOPMOST;
-
-				SetWindowLong(_hwnd, GWL_STYLE, style);
-				SetWindowLong(_hwnd, GWL_EXSTYLE, exStyle);
-
-				SetWindowPos(_hwnd, HWND_NOTOPMOST, windowRect.left, windowRect.top, windowRect.right - windowRect.left, windowRect.bottom - windowRect.top, SWP_FRAMECHANGED | SWP_SHOWWINDOW);
-				ShowWindow(_hwnd, SW_RESTORE);
-			}
-			break;
-		}
-
-		case WindowMode::Borderless: {
-			if (!windowRectSaved) {
-				GetWindowRect(_hwnd, &windowRect);
-				windowRectSaved = true;
-			}
-
-			auto [width, height] = getScreenSize();
-			style &= ~(WS_CAPTION | WS_THICKFRAME);
-			style |= WS_POPUP;
-
-			exStyle &= ~WS_EX_TOPMOST;
-
-			SetWindowLong(_hwnd, GWL_STYLE, style);
-			SetWindowLong(_hwnd, GWL_EXSTYLE, exStyle);
-
-			SetWindowPos(_hwnd, HWND_NOTOPMOST, 0, 0, width, height, SWP_FRAMECHANGED | SWP_SHOWWINDOW);
-			break;
-		}
-
-		case WindowMode::Fullscreen: {
-			if (!windowRectSaved) {
-				GetWindowRect(_hwnd, &windowRect);
-				windowRectSaved = true;
-			}
-
-			auto [width, height] = getScreenSize();
-
-			DEVMODE dm{};
-			EnumDisplaySettings(nullptr, ENUM_CURRENT_SETTINGS, &dm);
-
-			dm.dmPelsWidth = width;
-			dm.dmPelsHeight = height;
-			dm.dmFields = DM_PELSWIDTH | DM_PELSHEIGHT;
-
-			if (ChangeDisplaySettings(&dm, CDS_FULLSCREEN) != DISP_CHANGE_SUCCESSFUL) break;
-
-			wasFullscreen = true;
-
-			style &= ~(WS_CAPTION | WS_THICKFRAME);
-			style |= WS_POPUP;
-
-			exStyle |= WS_EX_TOPMOST;
-
-			SetWindowLong(_hwnd, GWL_STYLE, style);
-			SetWindowLong(_hwnd, GWL_EXSTYLE, exStyle);
-
-			SetWindowPos(_hwnd, HWND_TOPMOST, 0, 0, width, height, SWP_FRAMECHANGED | SWP_SHOWWINDOW);
-			break;
-		}
-    }
+void Window::setFullscreen(const bool state){
+	IOSystem::onWindowResizeFinished();
+	if(state) {
+		LONG l_WinStyle = GetWindowLong (_hwnd, GWL_STYLE);
+		SetWindowLong(_hwnd, GWL_STYLE,(l_WinStyle | WS_POPUP | WS_MAXIMIZE) & ~(WS_CAPTION | WS_THICKFRAME));
+        SetWindowLong(_hwnd, GWL_EXSTYLE, WS_EX_TOPMOST);
+		
+		ShowWindow(_hwnd, SW_MAXIMIZE);
+		auto [screen_width, screen_height] = getScreenSize();
+		SetWindowPos (_hwnd, HWND_TOP, 0, 0, screen_width, screen_height, 0);
+	}
+	else
+	{
+		LONG l_WinStyle = GetWindowLong (_hwnd, GWL_STYLE);
+		SetWindowLong(_hwnd, GWL_STYLE,(l_WinStyle | WS_CAPTION | WS_THICKFRAME | WS_BORDER) & ~WS_POPUP & ~WS_MAXIMIZE);
+		//SetWindowPos(_hwnd, HWND_TOP, left, top, width, height, 0);
+	}
 }
 
 void Window::setSize(int width, int height) {
