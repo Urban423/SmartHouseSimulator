@@ -10,8 +10,7 @@ public:
 	Input input;
 
 	void Update() {
-		if (input.pausePressed) OverlayManager::Toggle();
-		OverlayManager::Update();
+
 	}
 };
 
@@ -28,7 +27,8 @@ public:
 
 	void sit(bool value) {
 		sitting = value;
-		object.GetComponent<SphereCollider>().radius = 0.2f * sitting + (1 - sitting) * 1.0f;
+    	// CapsuleCollider& capsule = object.GetComponent<CapsuleCollider>();
+		object.transform.scale[1] = 0.5f * sitting + (1 - sitting) * 1.0f;
 	}
 
 	void FixedUpdate() {
@@ -40,15 +40,16 @@ public:
 		Vector3 forward = object.transform.rotation * Vector3(0, 0, -1);
 		Vector3 right   = object.transform.rotation * Vector3(1, 0, 0);
 		Vector3 move = forward * input.movement.y + right * input.movement.x;
+		bool sitted = false;
 		if(input.jumpPressed) {
 			rb.AddForce(Vector3(0, jumpPower, 0));
 			// player.transform.position.y += walkSpeed * Time::deltaTime;
-			sit(false);
 		} 
 		if(input.sitPressed) {
-			// sit(!sitting);
 			object.transform.position.y -= walkSpeed * Time::deltaTime;
+			sitted = true;
 		}
+		sit(sitted);
 
 		float speed = input.sprint? runSpeed : walkSpeed;
 		Vector3 currentVel = Vector3(rb.velocity.x, 0, rb.velocity.z);
@@ -109,5 +110,6 @@ inline static void InputComponentUpdate() {
 	else {
 		ic->input = std::move(Input());
 	}
-	ic->Update();
+	if (IOSystem::getInput().pausePressed) OverlayManager::Toggle();
+	OverlayManager::Update();
 }

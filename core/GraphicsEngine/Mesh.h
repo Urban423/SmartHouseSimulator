@@ -25,9 +25,6 @@ public:
 		if(id >= materials.size()) return 0;
 		return materials[id]; 
 	};
-	Vector2 calculateAndRebuildTextMesh(std::string& text, float fontSize, float letterSpacing, float lineSpacing);
-private:
-	void buildTextMesh(std::string& text, float fontSize, float letterSpacing, float lineSpacing, Vector2 offset);
 public:
     std::vector<uint32_t> indices;
     std::vector<Vertex> vertices;
@@ -36,3 +33,9 @@ public:
     VertexArrayObject* vao = nullptr;
     IndexArrayObject* iao = nullptr;
 };
+
+Mesh CreatePlane();
+Mesh CreateCube();
+Mesh CreateSphere(float radius = 0.5f, uint32_t stacks = 32, uint32_t slices = 32);
+Mesh CreateCylinder(uint32_t slices = 32);
+Mesh CreateCapsule(float height = 1.0f, float radius = 0.5f, uint32_t stacks = 32, uint32_t slices = 32);

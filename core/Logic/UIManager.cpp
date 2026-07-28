@@ -57,7 +57,7 @@ inline bool calculateAxisSize(int objID, char axis, char layoutDirection, Vector
 inline void calculateAxisGrow(int objID, char axis, Vector2 uiSize, Vector2 padding, char spacing, char layoutDirection) {
     float parentSize = uiSize[axis] - padding[0] - padding[1];
     float remainSize = parentSize;
-    char weightSum = 0;
+    float weightSum = 0;
     int counter = 0;
     bool mainAxis = axis == layoutDirection;
     const std::vector<int>& childrenID = ECS::GetHierarchy().getChildren(objID);
@@ -69,27 +69,26 @@ inline void calculateAxisGrow(int objID, char axis, Vector2 uiSize, Vector2 padd
 
             counter++;
             if(ui->isFill(axis)) weightSum += ui->weight;
-            remainSize -= ui->getComputedSize()[axis];
+            if(!ui->isFill(axis)) remainSize -= ui->getComputedSize()[axis];
         }
         if(counter > 0) remainSize -= spacing * (counter - 1);
     }
+
     
     for(auto childID: childrenID) {
         UIElement* ui = TryGetUIElement(childID);
         if(!ui) continue;
-        
-        if(ui->isFill(axis)) {
-            Vector2 size = ui->getComputedSize();
+        if(!ui->isFill(axis)) continue;
 
-            if (ECS::HasComponent<UIPopup>(childID)) {
-                size[axis] = parentSize;
-            }
-            else {
-                if (mainAxis) size[axis] += remainSize * ui->weight / weightSum;
-                else size[axis] = remainSize;
-            }
-            ui->setComputedSize(size);
+        Vector2 size = ui->getComputedSize();
+        if (ECS::HasComponent<UIPopup>(childID)) {
+            size[axis] = parentSize;
         }
+        else {
+            if (mainAxis) size[axis] = remainSize * ui->weight / weightSum;
+            else size[axis] = remainSize;
+        }
+        ui->setComputedSize(size);
     }
 }
 
@@ -160,7 +159,8 @@ void UISystem::Rebuild(Object& root, int newWidth, int newHeight, float uiScale)
     dfs.push(root.getID());
 
     UIElement* rootUI = TryGetUIElement(root.getID());
-    rootUI->setSize(newWidth, newHeight);
+    rootUI->setMinSize(newWidth, newHeight);
+    rootUI->setComputedSize({newWidth, newHeight});
 
     while(!dfs.empty()) {
         int objID = dfs.top();
@@ -171,24 +171,25 @@ void UISystem::Rebuild(Object& root, int newWidth, int newHeight, float uiScale)
     }
 
 
-    for(int i = bottomToTop.size() - 1; i >= 0; --i) {
+    for(int i = bottomToTop.size() - 1; i > 0; --i) {
         int objID = bottomToTop[i];
         UIElement* ui = TryGetUIElement(objID);
         if(!ui) continue;
 
-        if(!ECS::HasComponent<UIText>(objID)) {
-            ui->setComputedWidth(ui->getWidth());
-            ui->setComputedHeight(ui->getHeight());
-        }
+        ui->setComputedWidth(ui->getWidth());
+        ui->setComputedHeight(ui->getHeight());
         char direction = ui->direction == Direction::Vertical;
-        Vector4 padding = ui->padding * uiScale;
-        float spacing = ui->spacing * uiScale;
+        Vector4 padding = ui->padding;
+        float spacing = ui->spacing;
+        if(ui->scalable) {
+            padding *= uiScale;
+            spacing *= uiScale;
+        }
         if (ui->HasFlag(ui->widthFlags, UISizeFlags::Wrap)) {
             float width;
             if(calculateAxisSize(objID, 0, direction, {padding[0], padding[1]}, spacing, width)) {
                 ui->setComputedWidth(width);
-            } else {
-            }
+            } 
         }
         if (ui->HasFlag(ui->heightFlags, UISizeFlags::Wrap)) {
             float height;
@@ -204,8 +205,12 @@ void UISystem::Rebuild(Object& root, int newWidth, int newHeight, float uiScale)
         if(!ui) continue;
         
         char direction = ui->direction == Direction::Vertical;
-        Vector4 padding = ui->padding * uiScale;
-        float spacing = ui->spacing * uiScale;
+        Vector4 padding = ui->padding;
+        float spacing = ui->spacing;
+        if(ui->scalable) {
+            padding *= uiScale;
+            spacing *= uiScale;
+        }
         Vector2 uiSize = ui->getComputedSize();
         calculateAxisGrow(objID, 0, uiSize, {padding[0], padding[1]}, spacing, direction);
         calculateAxisGrow(objID, 1, uiSize, {padding[2], padding[3]}, spacing, direction);
@@ -219,8 +224,12 @@ void UISystem::Rebuild(Object& root, int newWidth, int newHeight, float uiScale)
         const std::vector<int>& childrenID = ECS::GetHierarchy().getChildren(objID);
         char mainDirection = ui->direction == Direction::Vertical;
         char crossDirection = 1 - mainDirection;
-        Vector4 padding = ui->padding * uiScale;
-        float spacing = ui->spacing * uiScale;
+        Vector4 padding = ui->padding;
+        float spacing = ui->spacing;
+        if(ui->scalable) {
+            padding *= uiScale;
+            spacing *= uiScale;
+        }
         char depth = ui->depth + 1;
         Vector2 parentSize = ui->getComputedSize();
         Vector2 parentPos = ui->getOffset();
@@ -243,12 +252,21 @@ void UISystem::Rebuild(Object& root, int newWidth, int newHeight, float uiScale)
                 offset += parentPos + GetAnchorOffset(Anchor::TopLeft, parentSize) - GetAnchorOffset(Anchor::TopLeft, childSize);
             }
             childUI->setOffset(offset);
-            childUI->setDepth(depth);
+            childUI->setDepth(depth++);
         }
     }
 
     Span<Slider> uiSliders = ECS::GetComponents<Slider>();
     for(auto& slider : uiSliders) {
         slider.calculate();
+    }
+
+    if(focusedInputField.valid() && focusedInputField.HasComponent<InputField>()) {
+        Object textInput = focusedInputField.getChild(0);
+        if(!textInput.valid() || !textInput.HasComponent<UIText>()) return;
+        
+        UIText& uiText = textInput.GetComponent<UIText>();
+        Vector2 cursorPos = uiText.getCursorPos(cursorIndex);
+        cursorImage.GetComponent<UIImage>().setOffset(cursorPos);
     }
 }

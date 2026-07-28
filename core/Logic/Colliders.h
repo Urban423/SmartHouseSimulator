@@ -5,6 +5,7 @@ enum class ColliderType {
     Sphere,
     Terrain,
     Cube,
+    Capsule,
 	Count,
 };
 
@@ -31,9 +32,29 @@ struct SphereCollider: public Collider {
     SphereCollider() { type = ColliderType::Sphere; }
 
 	Vector3 offset;
-	float radius = 1;
+	float radius = 0.5f;
 };
 
+
+struct CapsuleCollider: public Collider {
+    CapsuleCollider() { type = ColliderType::Capsule; }
+
+    void getEdge(Vector3& top, Vector3& bottom) {
+        Transform& tr = object.transform;
+		Vector3 center = tr.position + offset;
+		Quaternion rot = tr.rotation;
+        float scale = tr.scale[1];
+        float halfHeight = height * 0.5f * scale;
+
+        Vector3 axis{0, halfHeight, 0};
+        top = center + rot * axis;
+        bottom = center - rot * axis;
+    }
+
+	Vector3 offset;
+	float radius = 0.5f;
+	float height = 1.0f;
+};
 
 struct CubeCollider: public Collider {
 	CubeCollider() { type = ColliderType::Cube; }
@@ -132,10 +153,9 @@ struct TerrainCollider: public Collider {
 
 
 
-
 inline AABB calculateAABB(SphereCollider& collider) {
     Vector3 pos = collider.object.transform.position + collider.offset;
-    float radius = collider.radius;
+    float radius = collider.radius * collider.object.transform.scale.y;
     return {pos - Vector3(radius, radius, radius), pos + Vector3(radius, radius, radius), collider.object.getID()};
 }
 
@@ -322,11 +342,67 @@ inline bool calculateRayHit(Vector3 origin, Vector3 direction, float distance, R
         prevHeightDiff = diff;
     }
     return false;
-	}
+}
 
 
 
 
+
+inline AABB calculateAABB(CapsuleCollider& collider) {
+    Vector3 points[2];
+    collider.getEdge(points[0], points[1]);
+    float radius = collider.object.transform.scale.x * collider.radius;
+
+    AABB box;
+
+    box.min.x = std::min(points[0].x, points[1].x) - radius;
+    box.min.y = std::min(points[0].y, points[1].y) - radius;
+    box.min.z = std::min(points[0].z, points[1].z) - radius;
+
+    box.max.x = std::max(points[0].x, points[1].x) + radius;
+    box.max.y = std::max(points[0].y, points[1].y) + radius;
+    box.max.z = std::max(points[0].z, points[1].z) + radius;
+
+    return box;
+}
+
+
+inline Vector3 getInverseInertia(float mass, CapsuleCollider& collider)
+{
+    const float r = collider.radius;
+    const float h = std::max(0.0f, collider.height - 2.0f * r);
+
+    const float cylVolume    = Math::PI * r * r * h;
+    const float sphereVolume = (4.0f / 3.0f) * Math::PI * r * r * r;
+
+    const float totalVolume = cylVolume + sphereVolume;
+
+    const float cylMass    = mass * cylVolume / totalVolume;
+    const float sphereMass = mass * sphereVolume / totalVolume;
+
+    // Цилиндр
+    const float IyyCyl = 0.5f * cylMass * r * r;
+    const float IxxCyl = (1.0f / 12.0f) * cylMass * (3.0f * r * r + h * h);
+
+    // Сферическая часть (две полусферы)
+    const float d = h * 0.5f + 3.0f * r / 8.0f;
+
+    const float IyySphere = 0.4f * sphereMass * r * r;
+    const float IxxSphere = IyySphere + sphereMass * d * d;
+
+    const float Ix = IxxCyl + IxxSphere;
+    const float Iy = IyyCyl + IyySphere;
+
+    return {
+        1.0f / Ix,
+        1.0f / Iy,
+        1.0f / Ix
+    };
+}
+
+inline bool calculateRayHit(Vector3 origin, Vector3 direction, float distance, RayHit& hit, CapsuleCollider& collider) {
+    return false;
+}
 
 
 inline AABB calculateAABB(Collider& collider) {
@@ -339,6 +415,9 @@ inline AABB calculateAABB(Collider& collider) {
 
         case ColliderType::Terrain:
             return calculateAABB(static_cast<TerrainCollider&>(collider));
+
+        case ColliderType::Capsule:
+            return calculateAABB(static_cast<CapsuleCollider&>(collider));
 
         default:
             return AABB{};
@@ -356,6 +435,9 @@ inline bool calculateRayHit(Vector3 origin, Vector3 direction, float distance, R
         case ColliderType::Terrain:
             return calculateRayHit(origin, direction, distance, rayHit, static_cast<TerrainCollider&>(collider));
 
+        case ColliderType::Capsule:
+            return calculateRayHit(origin, direction, distance, rayHit, static_cast<CapsuleCollider&>(collider));
+
         default:
             return false;
     }
@@ -371,6 +453,9 @@ inline Vector3 getInverseInertia(float mass, Collider& collider) {
 
         case ColliderType::Terrain:
             return getInverseInertia(mass, static_cast<TerrainCollider&>(collider));
+
+        case ColliderType::Capsule:
+            return getInverseInertia(mass, static_cast<CapsuleCollider&>(collider));
 
         default:
             return Vector3{};

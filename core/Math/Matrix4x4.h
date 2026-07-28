@@ -28,10 +28,10 @@ public:
 	Vector3 getXDirection();
 	Vector3 getYDirection();
 	Vector3 getZDirection();
+	Quaternion getRotation() const;
 	inline Vector3 getTranslation() { return {mat[3][0], mat[3][1], mat[3][2]}; }
 
-	float *getPtr();
-
+	inline float *getPtr() { return &mat[0][0]; };
 public:
 	void operator*=(const Matrix4x4 &matrix);
 	Matrix4x4 operator*(const Matrix4x4 matrix);

@@ -40,7 +40,9 @@ enum class UIAlignFlags : uint8_t {
 inline UISizeFlags operator|(UISizeFlags a, UISizeFlags b) { return static_cast<UISizeFlags>(static_cast<uint8_t>(a) | static_cast<uint8_t>(b)); }
 inline UISizeFlags operator&(UISizeFlags a, UISizeFlags b) { return static_cast<UISizeFlags>(static_cast<uint8_t>(a) & static_cast<uint8_t>(b)); }
 
-
+Vector2 calculateAndRebuildTextMesh(Mesh& out, std::string& text, float fontSize, float letterSpacing, float lineSpacing, UIAlignFlags align);
+size_t getMeshCursorIndex(Mesh& mesh, Vector2 mousePos);
+Vector2 getMeshCursorPos(Mesh& mesh, size_t cursorIndex);
 
 class UISystem;
 struct UIElement {
@@ -64,6 +66,7 @@ public:
     UIAlignFlags alignY = UIAlignFlags::Start;
     Direction direction = Direction::Horizontal;
     bool overflow = true;
+    bool scalable = true;
     char depth = 0;
     char weight = 1;
 
@@ -73,6 +76,7 @@ public:
     inline bool HasFlag(UISizeFlags value, UISizeFlags flag) { return static_cast<uint8_t>(value) & static_cast<uint8_t>(flag); }
     inline bool isFill(char axis) { return axis == 0 ? HasFlag(widthFlags, UISizeFlags::Fill) : HasFlag(heightFlags, UISizeFlags::Fill); }
 
+    inline void setMinSize(float width, float height) { minWidth = width; minHeight = height; }
     void setWidth(float value) {
         widthFlags = UISizeFlags::Fixed;
         minWidth = value;
@@ -102,6 +106,7 @@ public:
     inline void setOffset(float value, char axis) {  offset[axis] = value; } 
     inline void setDepth(char newDepth) {  depth = newDepth; } 
     inline Vector3 getOffset() { return { offset.x, offset.y, -static_cast<float>(depth) }; }
+    inline Vector2 getOffset2() { return offset; }
     inline bool contain(Vector2 point) {  
         Vector2 half = { computedWidth * 0.5f, computedHeight * 0.5f };
         return point.x >= offset.x - half.x &&
@@ -126,6 +131,7 @@ struct UIText : public Component, public UIElement {
 public:
 	int meshID = -1;
     float fontSize = 32;
+    float letterSpacing = -9;
     std::string text;
 	Color color = 0;
 
@@ -139,12 +145,37 @@ public:
             Mesh mesh;
             meshID = MeshManager::addMesh(mesh);
         }
-        Vector2 newSize = MeshManager::getMeshByID(meshID).calculateAndRebuildTextMesh(text, fontSize, -9, 0);
+        Vector2 newSize = calculateAndRebuildTextMesh(MeshManager::getMeshByID(meshID), text, fontSize, letterSpacing, 0, alignX);
         setSize(newSize.x, newSize.y);
+    }
+    size_t getCursorIndex(Vector2 mousePos) {
+        if(text.size() == 0) return 0;
+        return getMeshCursorIndex(MeshManager::getMeshByID(meshID), mousePos - this->getOffset2());
+    }
+    Vector2 getCursorPos(size_t cursorIndex) {
+        return this->getOffset2() + getMeshCursorPos(MeshManager::getMeshByID(meshID), cursorIndex);
     }
 	inline int getId() { return meshID; }
 };
 
+
+class TextView : public Component {
+public:
+	std::string text;
+	int meshID = -1;
+	int layout = 0;
+	Color color = Color(1, 1, 1, 1);
+
+	inline void buildMesh() {
+		float fontSize = 0.8f;
+        if(meshID == -1) {
+            Mesh mesh;
+            meshID = MeshManager::addMesh(mesh);
+        }
+        Vector2 newSize = calculateAndRebuildTextMesh(MeshManager::getMeshByID(meshID), text, fontSize, 0, 0, UIAlignFlags::Center);
+	}
+	inline int getId() { return meshID; }
+};
 
 
 
@@ -187,8 +218,7 @@ struct Slider : public Component {
     bool calculate();
 };
 
-struct InputField : public Interactable {
-    size_t cursor = 0;
+struct InputField : public Component {
     size_t maxLength = SIZE_MAX;
 
     std::function<void(char)> onChar = nullptr;
@@ -211,5 +241,8 @@ public:
     }
 private:
     Object focusedInputField;
-
+    Object cursorImage;
+    size_t cursorIndex = 0;
+    double cursorBlinkTimer = 0.0;
+    double cursorBlinkRate = 0.5;
 };

@@ -4,8 +4,9 @@
 
 inline void PhysicSystem::solve(SphereCollider& s, TerrainCollider& t) {
     Vector3 pos = s.object.transform.position + s.offset;
+    float r = s.object.transform.scale.x * s.radius;
     float h = t.getHeight(pos.x, pos.z);
-    float bottom = pos.y - s.radius;
+    float bottom = pos.y - r;
     if (bottom > h) {
 		return;
 	}
@@ -27,22 +28,26 @@ inline void PhysicSystem::solve(SphereCollider& s1, SphereCollider& s2)
 {
     Vector3 posA = s1.object.transform.position + s1.offset;
     Vector3 posB = s2.object.transform.position + s2.offset;
+    float r1 = s1.object.transform.scale.y * s1.radius;
+    float r2 = s2.object.transform.scale.y * s2.radius;
     Vector3 delta = posA - posB;
     float dist2 = delta.sqrMagnitude();
-    float radiusSum = s1.radius + s2.radius;
+    float radiusSum = r1 + r2;
     if (dist2 >= radiusSum * radiusSum) return;
+
     float dist = std::sqrt(dist2);
 	Vector3 normal;
 	if (dist < 0.0001f) normal = Vector3(0,1,0);
 	else normal = delta / dist;
     float penetration = radiusSum - dist;
 
+
     Contact contact;
 	contact.a = &s1;
 	contact.b = &s2;
 	contact.count = 1;
 	contact.points[0].penetration = penetration;
-	contact.points[0].point = posA - normal * (s1.radius - penetration * 0.5f);
+	contact.points[0].point = posA - normal * (r1 - penetration * 0.5f);
 	contact.points[0].normal = normal;
     addContact(contact);
 }
@@ -86,45 +91,59 @@ inline void PhysicSystem::solve(TerrainCollider& terrain, CubeCollider& cube) {
 }
 
 inline void PhysicSystem::solve(SphereCollider& sphere, CubeCollider& cube) {
-    Contact contact{};
-    contact.a = &sphere;
-    contact.b = &cube;
-    contact.count = 0;
     Vector3 sphereCenter = sphere.object.transform.position + sphere.offset;
-    Vector3 vertices[8];
-    cube.getCubeVertices(vertices);
-    Vector3 cubeCenter = (vertices[0] + vertices[6]) * 0.5f;
-    Vector3 axes[3];
-    axes[0] = (vertices[1] - vertices[0]).normalized();
-    axes[1] = (vertices[2] - vertices[0]).normalized(); 
-    axes[2] = (vertices[4] - vertices[0]).normalized();
-    float minPen = FLT_MAX;
-    Vector3 bestAxis;
-    for (int i = 0; i < 3; i++) {
-        Vector3 axis = axes[i];
-        float cubeMin = FLT_MAX;
-        float cubeMax = -FLT_MAX;
-        for (int j = 0; j < 8; j++) {
-            float p = Vector3::Dot(vertices[j], axis);
-            cubeMin = std::min(cubeMin, p);
-            cubeMax = std::max(cubeMax, p);
+    float sphereRadius = sphere.object.transform.scale.x * sphere.radius;
+    Vector3 localCenter = Quaternion::Inverse(cube.object.transform.rotation) * (sphereCenter - cube.object.transform.position);
+   
+    Vector3 half = cube.object.transform.scale * cube.size;
+    Vector3 closest;
+    closest.x = Math::clamp(localCenter.x, -half.x, half.x);
+    closest.y = Math::clamp(localCenter.y, -half.y, half.y);
+    closest.z = Math::clamp(localCenter.z, -half.z, half.z);
+    
+    Vector3 delta = localCenter - closest;
+    float dist2 = delta.sqrMagnitude();
+    if (dist2 >= sphereRadius * sphereRadius) return;
+
+    Vector3 normal;
+    float penetration;
+    if (dist2 < 0.0001f) {
+        float dx = half.x - fabs(localCenter.x);
+        float dy = half.y - fabs(localCenter.y);
+        float dz = half.z - fabs(localCenter.z);
+
+        if (dx < dy && dx < dz) {
+            normal = { localCenter.x > 0 ? 1.f : -1.f, 0, 0 };
+            closest = { localCenter.x > 0 ? half.x : -half.x, localCenter.y, localCenter.z };
+            penetration = dx;
         }
-        float sphereProj = Vector3::Dot(sphereCenter, axis);
-        float sphereMin = sphereProj - sphere.radius;
-        float sphereMax = sphereProj + sphere.radius;
-        float overlap = std::min(cubeMax, sphereMax) - std::max(cubeMin, sphereMin);
-        if (overlap < 0) return;
-        if (overlap < minPen) {
-            minPen = overlap;
-            bestAxis = axis;
+        else if (dy < dz) {
+            normal = { 0, localCenter.y > 0 ? 1.f : -1.f, 0 };
+            closest = { localCenter.x, localCenter.y > 0 ? half.y : -half.y, localCenter.z };
+            penetration = dy;
         }
+        else {
+            normal = { 0, 0, localCenter.z > 0 ? 1.f : -1.f };
+            closest = { localCenter.x, localCenter.y, localCenter.z > 0 ? half.z : -half.z };
+            penetration = dz;
+        }
+    } else {
+        float dist = std::sqrt(dist2);
+        if (dist < 0.0001f) normal = Vector3(0,1,0);
+        else normal = delta / dist;
+        penetration = dist - sphereRadius;
     }
-    if (Vector3::Dot(sphereCenter - cubeCenter, bestAxis) < 0) bestAxis = -bestAxis;
-    ContactPoint& cp = contact.points[0];
-    cp.penetration = minPen;
-    cp.point = sphereCenter - bestAxis * sphere.radius;
-    cp.normal = bestAxis;
-    contact.count = 1;
+
+    Vector3 worldPoint = cube.object.transform.position + cube.object.transform.rotation * closest;
+    Vector3 worldNormal = cube.object.transform.rotation * normal;
+
+    Contact contact;
+	contact.a = &sphere;
+	contact.b = &cube;
+	contact.count = 1;
+	contact.points[0].penetration = penetration;
+	contact.points[0].point = worldPoint;
+	contact.points[0].normal = worldNormal;
     addContact(contact);
 }
 
@@ -197,6 +216,190 @@ inline void PhysicSystem::solve(CubeCollider& cubeA, CubeCollider& cubeB) {
     addContact(contact);
 }
 
+inline void PhysicSystem::solve(TerrainCollider& terrain, CapsuleCollider& capsule) {
+    Vector3 points[2];
+    capsule.getEdge(points[0], points[1]);
+    float r1 = capsule.object.transform.scale.x * capsule.radius;
+
+    Contact contact;
+    contact.count = 0;
+    contact.a = &capsule;
+    contact.b = &terrain;
+
+    for (int i = 0; i < 2; i++) {
+        Vector3 point = points[i];
+        float bottom = point.y - r1;
+        float terrainHeight = terrain.getHeight(point.x, point.z);
+        if (terrainHeight < bottom) continue;
+        
+        ContactPoint& cp = contact.points[contact.count++];
+        cp.point = Vector3(point.x, terrainHeight, point.z);
+	    cp.penetration = terrainHeight - bottom;
+        cp.normal = terrain.getNormal(point.x, point.z);
+    }
+    if(contact.count) addContact(contact);
+}
+
+inline void PhysicSystem::solve(SphereCollider& sphere, CapsuleCollider& capsule) {
+    Vector3 sphereCenter = sphere.object.transform.position + sphere.offset;
+    Vector3 a1, a2;
+    capsule.getEdge(a1, a2);
+    float r1 = sphere.object.transform.scale.x * sphere.radius;
+    float r2 = capsule.object.transform.scale.x * capsule.radius;
+
+    Vector3 p1 = closestPointOnSegment(a1, a2,sphereCenter);
+
+    Vector3 delta = sphereCenter - p1;
+    float dist2 = delta.sqrMagnitude();
+    float radiusSum = r1 + r2;
+    if (dist2 >= radiusSum * radiusSum) return;
+
+    float dist = std::sqrt(dist2);
+	Vector3 normal;
+	if (dist < 0.0001f) normal = Vector3(0,1,0);
+	else normal = delta / dist;
+    float penetration = radiusSum - dist;
+
+    Contact contact;
+    contact.count = 1;
+    contact.a = &sphere;
+    contact.b = &capsule;
+
+    ContactPoint& cp = contact.points[0];
+    cp.normal = normal;
+    cp.penetration = penetration;
+    cp.point = p1 + cp.normal * r1;
+
+    addContact(contact);
+}
+
+inline void PhysicSystem::solve(CubeCollider& cube, CapsuleCollider& capsule) {
+    Vector3 points[2];
+    capsule.getEdge(points[0], points[1]);
+    Quaternion invRot = Quaternion::Inverse(cube.object.transform.rotation);
+    Vector3 p0 = invRot * (points[0] - cube.object.transform.position);
+    Vector3 p1 = invRot * (points[1] - cube.object.transform.position);
+
+    float radius = capsule.object.transform.scale.x * capsule.radius;
+
+    Vector3 segment = p1 - p0;
+    Vector3 segAxis = segment.normalized();
+    Vector3 half = 0.5f * cube.size * cube.object.transform.scale;
+
+    Vector3 axes[7];
+    axes[0] = {1,0,0};
+    axes[1] = {0,1,0};
+    axes[2] = {0,0,1};
+    axes[3] = segAxis;
+    axes[4] = Vector3::Cross(segAxis, {1,0,0});
+    axes[5] = Vector3::Cross(segAxis, {0,1,0});
+    axes[6] = Vector3::Cross(segAxis, {0,0,1});
+    float minPen = FLT_MAX;
+    Vector3 bestAxis;
+    
+    for(int i = 0; i < 4; i++) {
+        Vector3 axis = axes[i];
+        float len2 = axis.sqrMagnitude();
+        if(len2 < 0.00001f) continue;
+
+
+        float a = Vector3::Dot(p0, axis);
+        float b = Vector3::Dot(p1, axis);
+        if(a > b) std::swap(a, b);
+        float capsuleMin = a - radius;
+        float capsuleMax = b + radius;
+
+        float extent = half.x * fabs(axis.x) + half.y * fabs(axis.y) + half.z * fabs(axis.z);
+        float boxMin = -extent;
+        float boxMax = extent;
+        float overlap = std::min(capsuleMax, boxMax) - std::max(capsuleMin, boxMin);
+
+        if(overlap < 0) return;
+        if(overlap < minPen) {
+            minPen = overlap;
+            bestAxis = axis;
+        }
+    }
+    Vector3 boxCenter = Vector3(0,0,0);
+    Vector3 capsuleCenter = (p0 + p1) * 0.5f;
+    if(Vector3::Dot(capsuleCenter, bestAxis) < 0.0f) bestAxis = -bestAxis;
+
+
+   Vector3 boxPoint;
+
+    float ax = fabs(bestAxis.x);
+    float ay = fabs(bestAxis.y);
+    float az = fabs(bestAxis.z);
+
+    if(ax > ay && ax > az)
+    {
+        boxPoint.x = bestAxis.x > 0 ? half.x : -half.x;
+        boxPoint.y = Math::clamp(capsuleCenter.y, -half.y, half.y);
+        boxPoint.z = Math::clamp(capsuleCenter.z, -half.z, half.z);
+    }
+    else if(ay > az)
+    {
+        boxPoint.y = bestAxis.y > 0 ? half.y : -half.y;
+        boxPoint.x = Math::clamp(capsuleCenter.x, -half.x, half.x);
+        boxPoint.z = Math::clamp(capsuleCenter.z, -half.z, half.z);
+    }
+    else
+    {
+        boxPoint.z = bestAxis.z > 0 ? half.z : -half.z;
+        boxPoint.x = Math::clamp(capsuleCenter.x, -half.x, half.x);
+        boxPoint.y = Math::clamp(capsuleCenter.y, -half.y, half.y);
+    }
+
+    Vector3 worldPoint = cube.object.transform.position + cube.object.transform.rotation * boxPoint;
+    Vector3 worldNormal = cube.object.transform.rotation * bestAxis;
+
+    Contact contact;
+    contact.a = &capsule;
+    contact.b = &cube;
+    contact.count = 1;
+    ContactPoint& cp = contact.points[0];
+    cp.penetration = minPen;
+    cp.point = worldPoint;
+    cp.normal = worldNormal;
+    addContact(contact);
+}
+
+inline void PhysicSystem::solve(CapsuleCollider& capsule1, CapsuleCollider& capsule2) {
+    Vector3 a1, a2;
+    Vector3 b1, b2;
+    capsule1.getEdge(a1, a2);
+    capsule2.getEdge(b1, b2);
+    float r1 = capsule1.object.transform.scale.x * capsule1.radius;
+    float r2 = capsule2.object.transform.scale.x * capsule2.radius;
+
+    Vector3 p1, p2;
+    closestPointsSegmentSegment(a1, a2, b1, b2, p1, p2);
+
+    Vector3 delta = p2 - p1;
+    float dist2 = delta.sqrMagnitude();
+    float radiusSum = r1 + r2;
+    if (dist2 >= radiusSum * radiusSum) return;
+
+    float dist = std::sqrt(dist2);
+	Vector3 normal;
+	if (dist < 0.0001f) normal = Vector3(0,1,0);
+	else normal = delta / dist;
+    float penetration = radiusSum - dist;
+
+    Contact contact;
+    contact.count = 1;
+    contact.a = &capsule2;
+    contact.b = &capsule1;
+
+    ContactPoint& cp = contact.points[0];
+    cp.normal = normal;
+    cp.penetration = penetration;
+    cp.point = p1 + cp.normal * r1;
+
+    addContact(contact);
+}
+
+
 
 
 
@@ -214,14 +417,21 @@ inline void PhysicSystem::solve(Collider* a, Collider* b)
     static bool init = false;
     if (!init) {
         dispatch[(int)ColliderType::Sphere][(int)ColliderType::Sphere] = &PhysicSystem::solveAdapter<SphereCollider, SphereCollider>;
-        dispatch[(int)ColliderType::Sphere][(int)ColliderType::Cube] = &PhysicSystem::solveAdapter<SphereCollider, CubeCollider>;
         dispatch[(int)ColliderType::Sphere][(int)ColliderType::Terrain] = &PhysicSystem::solveAdapter<SphereCollider, TerrainCollider>;
+
+        dispatch[(int)ColliderType::Sphere][(int)ColliderType::Cube] = &PhysicSystem::solveAdapter<SphereCollider, CubeCollider>;
         dispatch[(int)ColliderType::Terrain][(int)ColliderType::Cube] =  &PhysicSystem::solveAdapter<TerrainCollider, CubeCollider>;
         dispatch[(int)ColliderType::Cube][(int)ColliderType::Cube] =  &PhysicSystem::solveAdapter<CubeCollider, CubeCollider>;
+
+        dispatch[(int)ColliderType::Sphere][(int)ColliderType::Capsule] =  &PhysicSystem::solveAdapter<SphereCollider, CapsuleCollider>;
+        dispatch[(int)ColliderType::Terrain][(int)ColliderType::Capsule] =  &PhysicSystem::solveAdapter<TerrainCollider, CapsuleCollider>;
+        dispatch[(int)ColliderType::Cube][(int)ColliderType::Capsule] =  &PhysicSystem::solveAdapter<CubeCollider, CapsuleCollider>;
+        dispatch[(int)ColliderType::Capsule][(int)ColliderType::Capsule] =  &PhysicSystem::solveAdapter<CapsuleCollider, CapsuleCollider>;
         init = true;
     }
-    SolveFn fn = dispatch[(int)a->type][(int)b->type];
-    if (fn) (this->*fn)(a, b);
+    int typeA = (int)a->type;
+    int typeB = (int)b->type;
+    if(dispatch[typeA][typeB]) (this->*dispatch[typeA][typeB])(a, b);
 }
 
 inline bool PhysicSystem::calculateRayCast(Vector3 origin, Vector3 direction, float distance, RayHit& rayHit) {
@@ -336,7 +546,7 @@ inline void PhysicSystem::simulatePhysicStep() {
                 Vector3 contactPoint = c.points[i].point;
                 if(iter == 0) {
                     float slop = 0.01f;
-                    float percent = 0.1f;
+                    float percent = 0.2f;
                     float correctionAmount = std::max(c.points[i].penetration - slop, 0.0f) / invMassSum * percent;
                     Vector3 correction = normal * correctionAmount;
                     if(A) A->prevPosition += correction * invMassA;
@@ -360,7 +570,7 @@ inline void PhysicSystem::simulatePhysicStep() {
                     Vector3 rbCrossN = Vector3::Cross(rb, normal);
                     float denominator = invMassSum + Vector3::Dot(raCrossN, inverseInertiaA * raCrossN) + Vector3::Dot(rbCrossN, inverseInertiaB * rbCrossN);
                     float restitution = 0.0f;
-                    if (velAlongNormal < -2.0f) restitution = 0.3f;
+                    if (velAlongNormal < -2.0f) restitution = 0.1f;
                     normalImpulse = -(1.0f + restitution) * velAlongNormal / denominator;
                     normalImpulse /= c.count;
                     
@@ -427,4 +637,3 @@ inline void PhysicSystem::simulatePhysicStep() {
 inline void PhysicSystem::calculatePhysic() {
 	simulatePhysicStep(); 
 }
-

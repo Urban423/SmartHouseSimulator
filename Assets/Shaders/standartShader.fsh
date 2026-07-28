@@ -60,7 +60,7 @@ void main()
         lightColor = mix(evening, night, (dayCycle - 0.75) / 0.25); // Evening → Night
 	
     _TMP0 = dot(normalize(TEX1.xyz), normalize(_LightDir));
-    _diffuse = max(_TMP0, 0.0) + 0.3;
+    _diffuse = max(_TMP0, 0.0) + 0.5;
     _color = texture2D(_MainTex, TEX0.xy);
     vec3 finalLight = lightColor * _diffuse;
     _ret_0 = _color*_diffuse;

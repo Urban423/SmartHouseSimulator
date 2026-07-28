@@ -6,6 +6,7 @@
 #include "MaterialManager.h"
 #include "PerlinNoise.h"
 #include "UIManager.h"
+#include "ResourceManager.h"
 
 RenderManager *RenderManager::renderManager = new RenderManager();
 
@@ -22,105 +23,82 @@ void RenderManager::init() {
 	TextureManager::CreateTexture(atlasTexture);
 
 	// create texture
-	const char *textureFiles[] = {
-		"Textures/Tile.png",			  	// 2
-		"Textures/Tile1.png",		  		// 3
-		"Textures/Floortex.png",		  	// 4
-		"Textures/Grass.png",		  		// 5
-		"Textures/Ghost.png",		  		// 6
-		"Textures/Ghost1.png",		  		// 7
-		"Textures/LightBulb.png",	  		// 8
-		"Textures/LightBulbOff.png",	  	// 9
-		"Textures/MotionSensor.png",	  	// 10
-		"Textures/Tree.png",			  	// 11
-		"Textures/Bush.png",			  	// 12
-		"Textures/Sofa.png",			  	// 13
-		"Textures/floorWooden1.png",	  	// 14
-	};
-
-	int textureNumber = sizeof(textureFiles) / sizeof(const char *);
-	for (int i = 0; i < textureNumber; i++) {
-		TextureStruct temp;
-		if(!IOSystem::readImage(temp, textureFiles[i])) continue;
-		TextureManager::CreateTexture(temp);
-	}
+	#define FIELD(name) \
+		{ \
+			TextureStruct temp; \
+			if (IOSystem::readImage(temp, "Textures/" #name ".png")) { \
+				TextureManager::CreateTexture(temp); \
+			} \
+		}
+	TEXTURES
+	#undef FIELD
 
 	// create shader
-	const char *shadersFiles[] = {
-		"Shaders/shader.vsh",
-		"Shaders/shader.fsh",
-
-		"Shaders/shader2.vsh",
-		"Shaders/shader2.fsh",
-
-		"Shaders/shader3.vsh",
-		"Shaders/shader3.fsh",
-
-		"Shaders/shader4.vsh",
-		"Shaders/shader4.fsh",
-
-		"Shaders/shader5.vsh",
-		"Shaders/shader5.fsh",
-
-		"Shaders/textShader.vsh",
-		"Shaders/textShader.fsh",
-
-		"Shaders/uiShader.vsh",
-		"Shaders/uiShader.fsh",
-	};
-	for (int i = 0; i < sizeof(shadersFiles) / sizeof(const char *); i += 2)
-	{
-		shaders.push_back(GraphicsEngine::createShaderProgram({openCFile(shadersFiles[i]).getPtr(), openCFile(shadersFiles[i + 1]).getPtr()}));
-	}
+	#define FIELD(name) \
+		shaders.push_back(GraphicsEngine::createShaderProgram({ \
+			openCFile("Shaders/" #name ".vsh").getPtr(), \
+			openCFile("Shaders/" #name ".fsh").getPtr() \
+		}));
+	SHADERS
+	#undef FIELD
 
 	// create shape points
+	MeshManager::addMesh(CreatePlane());
+	MeshManager::addMesh(CreateCube());
+	MeshManager::addMesh(CreateSphere(0.5f, 32, 32));
+	MeshManager::addMesh(CreateCylinder(32));
+	MeshManager::addMesh(CreateCapsule(1.0f, 0.5f, 32, 32));
 
-	Vertex planePoints[4] = {
-		{{-0.5f, -0.5f, 0.0f}, {0, 0, 1}, {0, 0}, {0, 0}},
-		{{ 0.5f, -0.5f, 0.0f}, {0, 0, 1}, {1, 0}, {1, 0}},
-		{{-0.5f,  0.5f, 0.0f}, {0, 0, 1}, {0, 1}, {0, 1}},
-		{{ 0.5f,  0.5f, 0.0f}, {0, 0, 1}, {1, 1}, {1, 1}},
-	};
-	int planeVertexCount = 4;
-
-	int planeInedxes[6] = {0, 2, 1, 1, 2, 3};
-	unsigned int planeIndexCount = 6;
-	int planeMaterialCount = 1;
-
-	Mesh planeMesh((int*)planeInedxes, planeIndexCount, planePoints, planeVertexCount, &planeIndexCount, planeMaterialCount);
-	MeshManager::addMesh(planeMesh);
-
-	const char *files[] = {
-		"Models/cube.fbx",
-		"Models/sphere.fbx",
-	};
-	for (int i = 0; i < sizeof(files) / sizeof(const char *); i++) {
-		std::vector<Mesh> meshes = IOSystem::readFBX(files[i]);
-		for(auto& mesh : meshes) {
-			MeshManager::addMesh(mesh);
+	#define FIELD(name) \
+		{ \
+			std::vector<Mesh> meshes = IOSystem::readFBX("Models/" #name ".fbx"); \
+			for (auto& mesh : meshes) { \
+				MeshManager::addMesh(mesh); \
+			} \
 		}
-	}
+	MESHES
+	#undef FIELD
 }
 
-void RenderManager::renderCamera(Camera &camera, int renderViewIndex)
-{
+Quaternion getWorldRotation(int objectID) {
+    Quaternion rot;
+    while (objectID != -1) {
+        Transform& tr = ECS::GetComponent<Transform>(objectID);
+        rot = tr.rotation * rot;
+        objectID = ECS::GetHierarchy().getParent(objectID);
+    }
+    return rot;
+}
+
+Matrix4x4 getCameraView(Matrix4x4 world, int cameraID) {
+    Matrix4x4 view;
+    Transform& tr = ECS::GetComponent<Transform>(cameraID);
+    Vector3 pos = world.getTranslation();
+    Quaternion rot = getWorldRotation(cameraID);
+
+    Matrix4x4 R;
+    R.setIdentity();
+    R.setRotation(Quaternion::Inverse(rot));
+
+    Matrix4x4 T;
+    T.setIdentity();
+    T.setTranslation(-pos);
+    return R * T;
+}
+
+void RenderManager::renderCamera(Camera &camera, int renderViewIndex) {
 	TextureManager::SetRenderTarget(camera.frameBufferIndex);
-	// Matrix4x4 camView = calculateCameraView(camera.object.transform);
-	Matrix4x4 camView = worlds[camera.object.getID()];
-	camView.inverse();
+	int camID = camera.object.getID();
+	Matrix4x4 camView = getCameraView(worlds[camID], camID);
 	Matrix4x4 projection;
 	projection.setIdentity();
 	int width, height;
-	if (camera.frameBufferIndex == -1) {
-		std::tie(width, height) = IOSystem::getWindowSize();
-	}
-	else {
-		std::tie(width, height) = TextureManager::GetTextureSize(camera.frameBufferIndex);
-	}
-	if(camera.perpective)
-		projection.setPerspectiveFovLH(3.14f / 4, (float)width / height, 0.01f, 1000);
-	else
-		projection.setOrthoLH(0, (float)width * camera.focalLength, (float)height * camera.focalLength, 0, -4, 4);
+	if (camera.frameBufferIndex == -1) std::tie(width, height) = IOSystem::getWindowSize();
+	else std::tie(width, height) = TextureManager::GetTextureSize(camera.frameBufferIndex);
+
+	if(camera.perpective) projection.setPerspectiveFovLH(3.14f / 4, (float)width / height, 0.01f, 1000);
+	else projection.setOrthoLH(0, (float)width * camera.focalLength, (float)height * camera.focalLength, 0, -4, 4);
+
 	GraphicsEngine::setViewPort(0, 0, width, height);
 	GraphicsEngine::clear(camera.color);
 	GraphicsEngine::clearColorDepthBuffer();
@@ -161,12 +139,10 @@ void RenderManager::renderCamera(Camera &camera, int renderViewIndex)
 	}
 
 	Span<TextView> textViews = ECS::GetComponents<TextView>();
-	int text_shader_index = 5;
-	int atlas_index = 1;
-	GraphicsEngine::setShaderProgram(shaders[text_shader_index]);
-	GraphicsEngine::setProjectionMatrix(shaders[text_shader_index], projection);
-	GraphicsEngine::setCameraViewMatrix(shaders[text_shader_index], camView);
-	GraphicsEngine::setTexture(TextureManager::GetTextureByID(atlas_index), shaders[text_shader_index]);
+	GraphicsEngine::setShaderProgram(shaders[SHADER_textShader]);
+	GraphicsEngine::setProjectionMatrix(shaders[SHADER_textShader], projection);
+	GraphicsEngine::setCameraViewMatrix(shaders[SHADER_textShader], camView);
+	GraphicsEngine::setTexture(TextureManager::GetTextureByID(TEX_Atlas), shaders[SHADER_textShader]);
 	for (auto& textView : textViews) {
 		if (textView.layout != renderViewIndex) continue;
 		int objectID = textView.object.getID();
@@ -178,32 +154,26 @@ void RenderManager::renderCamera(Camera &camera, int renderViewIndex)
 
 		// set material
 		unsigned int number_of_mats = MeshManager::setMeshById(mesh_index);
-		GraphicsEngine::setMatrix(shaders[text_shader_index], worlds[objectID]);
+		GraphicsEngine::setMatrix(shaders[SHADER_textShader], worlds[objectID]);
 		int number_of_triangles = MeshManager::getNumberOfPolygonsByMaterialID(mesh_index, 0);
 		GraphicsEngine::drawTriangles(number_of_triangles, nullptr);
 	}
-
-	// ui
-	// std::tie(width, height) = UILayout::getInstance().GetLayoutSize();
-	
 	
 	constexpr float scaleUI = 0.01f;
-	int planeIndex = 0;
-	int uiShaderIndex = 6;
 	if(false) {
-		unsigned int number_of_mats = MeshManager::setMeshById(planeIndex);
-		int planeTriangles = MeshManager::getNumberOfPolygonsByMaterialID(planeIndex, 0);
+		unsigned int number_of_mats = MeshManager::setMeshById(MESH_Plane);
+		int planeTriangles = MeshManager::getNumberOfPolygonsByMaterialID(MESH_Plane, 0);
 		Span<UIImage> uiImages = ECS::GetComponents<UIImage>();
-		GraphicsEngine::setShaderProgram(shaders[uiShaderIndex]);
-		GraphicsEngine::setProjectionMatrix(shaders[uiShaderIndex], projection);
-		GraphicsEngine::setCameraViewMatrix(shaders[uiShaderIndex], camView);
+		GraphicsEngine::setShaderProgram(shaders[SHADER_uiShader]);
+		GraphicsEngine::setProjectionMatrix(shaders[SHADER_uiShader], projection);
+		GraphicsEngine::setCameraViewMatrix(shaders[SHADER_uiShader], camView);
 		for (auto& uiImage : uiImages) {
 			if (uiImage.layout != renderViewIndex) continue;
 			int objectID = uiImage.object.getID();
 			if (!ECS::isActive(objectID)) continue;
 
-			GraphicsEngine::setTexture(TextureManager::GetTextureByID(uiImage.texture), shaders[uiShaderIndex]);
-			GraphicsEngine::setVector4(shaders[uiShaderIndex], uiImage.color.ToVector4());
+			GraphicsEngine::setTexture(TextureManager::GetTextureByID(uiImage.texture), shaders[SHADER_uiShader]);
+			GraphicsEngine::setVector4(shaders[SHADER_uiShader], uiImage.color.ToVector4());
 
 			Vector3 offset = uiImage.getOffset() * scaleUI;
 			offset.z *= -1;
@@ -212,13 +182,13 @@ void RenderManager::renderCamera(Camera &camera, int renderViewIndex)
 			worlds[objectID].setScale(uiImage.getComputedSize() * scaleUI);
 			worlds[objectID].setTranslation(offset);
 
-			GraphicsEngine::setMatrix(shaders[uiShaderIndex], worlds[objectID]);
+			GraphicsEngine::setMatrix(shaders[SHADER_uiShader], worlds[objectID]);
 			GraphicsEngine::drawTriangles(planeTriangles, nullptr);
 		}
 
 		Span<UIText> uiTextes = ECS::GetComponents<UIText>();
-		GraphicsEngine::setShaderProgram(shaders[text_shader_index]);
-		GraphicsEngine::setTexture(TextureManager::GetTextureByID(atlas_index), shaders[text_shader_index]);
+		GraphicsEngine::setShaderProgram(shaders[SHADER_textShader]);
+		GraphicsEngine::setTexture(TextureManager::GetTextureByID(TEX_Atlas), shaders[SHADER_textShader]);
 		
 		for (auto& uiText : uiTextes) {
 			if (uiText.layout != renderViewIndex) continue;
@@ -232,8 +202,8 @@ void RenderManager::renderCamera(Camera &camera, int renderViewIndex)
 			worlds[objectID].setScale(scaleUI);
 			worlds[objectID].setTranslation(offset);
 
-			GraphicsEngine::setVector4(shaders[text_shader_index], uiText.color.ToVector4());
-			GraphicsEngine::setMatrix(shaders[text_shader_index], worlds[objectID]);
+			GraphicsEngine::setVector4(shaders[SHADER_textShader], uiText.color.ToVector4());
+			GraphicsEngine::setMatrix(shaders[SHADER_textShader], worlds[objectID]);
 			
 			int uiTextMesh = uiText.getId();
 			if(uiTextMesh == -1) continue;
@@ -242,43 +212,50 @@ void RenderManager::renderCamera(Camera &camera, int renderViewIndex)
 			GraphicsEngine::drawTriangles(number_of_triangles, nullptr);
 		}
 	}
-
+}
 	
 
+void RenderManager::renderUI(int renderViewIndex) {
+	TextureManager::SetRenderTarget(-1);
 	Span<UIImage> uiImages = ECS::GetComponents<UIImage>();
 	Vector2 uiSize = uiImages[0].getComputedSize();
+
+	GraphicsEngine::setViewPort(0, 0, uiSize.x, uiSize.y);
+	
+	Matrix4x4 camView;
+	camView.setIdentity();
+	Matrix4x4 projection;
 	projection.setIdentity();
 	projection.setOrthoLH(0.0f, uiSize.x, 0.0f, uiSize.y, -100.0f, 100.0f);
-	camView.setIdentity();
 
-	unsigned int number_of_mats = MeshManager::setMeshById(planeIndex);
-	int planeTriangles = MeshManager::getNumberOfPolygonsByMaterialID(planeIndex, 0);
-	GraphicsEngine::setShaderProgram(shaders[uiShaderIndex]);
-	GraphicsEngine::setProjectionMatrix(shaders[uiShaderIndex], projection);
-	GraphicsEngine::setCameraViewMatrix(shaders[uiShaderIndex], camView);
+	unsigned int number_of_mats = MeshManager::setMeshById(MESH_Plane);
+	int planeTriangles = MeshManager::getNumberOfPolygonsByMaterialID(MESH_Plane, 0);
+	GraphicsEngine::setShaderProgram(shaders[SHADER_uiShader]);
+	GraphicsEngine::setProjectionMatrix(shaders[SHADER_uiShader], projection);
+	GraphicsEngine::setCameraViewMatrix(shaders[SHADER_uiShader], camView);
 	for (auto& uiImage : uiImages) {
 		if (uiImage.layout != renderViewIndex) continue;
 		int objectID = uiImage.object.getID();
 		if (!ECS::isActive(objectID)) continue;
 
-		GraphicsEngine::setTexture(TextureManager::GetTextureByID(uiImage.texture), shaders[uiShaderIndex]);
-		GraphicsEngine::setVector4(shaders[uiShaderIndex], uiImage.color.ToVector4());
+		GraphicsEngine::setTexture(TextureManager::GetTextureByID(uiImage.texture), shaders[SHADER_uiShader]);
+		GraphicsEngine::setVector4(shaders[SHADER_uiShader], uiImage.color.ToVector4());
 
 		Matrix4x4 world;
 		world.setIdentity();
 		world.setScale(uiImage.getComputedSize());
 		world.setTranslation(uiImage.getOffset());
 
-		GraphicsEngine::setMatrix(shaders[uiShaderIndex], world);
+		GraphicsEngine::setMatrix(shaders[SHADER_uiShader], world);
 		GraphicsEngine::drawTriangles(planeTriangles, nullptr);
 	}
 
 	//ui text
 	Span<UIText> uiTextes = ECS::GetComponents<UIText>();
-	GraphicsEngine::setShaderProgram(shaders[text_shader_index]);
-	GraphicsEngine::setTexture(TextureManager::GetTextureByID(atlas_index), shaders[text_shader_index]);
-	GraphicsEngine::setProjectionMatrix(shaders[text_shader_index], projection);
-	GraphicsEngine::setCameraViewMatrix(shaders[text_shader_index], camView);
+	GraphicsEngine::setShaderProgram(shaders[SHADER_textShader]);
+	GraphicsEngine::setTexture(TextureManager::GetTextureByID(TEX_Atlas), shaders[SHADER_textShader]);
+	GraphicsEngine::setProjectionMatrix(shaders[SHADER_textShader], projection);
+	GraphicsEngine::setCameraViewMatrix(shaders[SHADER_textShader], camView);
 	for (auto& uiText : uiTextes) {
 		if (uiText.layout != renderViewIndex) continue;
 		int objectID = uiText.object.getID();
@@ -287,8 +264,8 @@ void RenderManager::renderCamera(Camera &camera, int renderViewIndex)
 		worlds[objectID].setIdentity();
 		worlds[objectID].setTranslation(uiText.getOffset());
 
-		GraphicsEngine::setVector4(shaders[text_shader_index], uiText.color.ToVector4());
-		GraphicsEngine::setMatrix(shaders[text_shader_index], worlds[objectID]);
+		GraphicsEngine::setVector4(shaders[SHADER_textShader], uiText.color.ToVector4());
+		GraphicsEngine::setMatrix(shaders[SHADER_textShader], worlds[objectID]);
 		
 		int uiTextMesh = uiText.getId();
 		if(uiTextMesh == -1) continue;
@@ -333,13 +310,12 @@ void RenderManager::Render() {
 		}
 	}
 
-	GraphicsEngine::disable3D();
 	Span<Camera> cameras = ECS::GetComponents<Camera>();
 	// auto start = std::chrono::high_resolution_clock::now();
-	for (int i = 0; i < cameras.size(); i++)
-	{
+	for (int i = 0; i < cameras.size(); i++) {
 		renderCamera(cameras[i], cameras[i].renderLayout);
 	}
+	renderUI(0);
 
 	// auto end = std::chrono::high_resolution_clock::now();
 	// float ms = std::chrono::duration<float, std::milli>(end - start).count();

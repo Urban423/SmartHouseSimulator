@@ -20,6 +20,13 @@ public:
 		}
 		return w;
 	}
+	inline Vector4& operator*=(float scale) {
+		x *= scale;
+		y *= scale;
+		z *= scale;
+		w *= scale;
+		return *this;
+	}
 	inline Vector4 operator*(float scale) {
 		return {x * scale, y * scale, z * scale, w * scale};
 	}

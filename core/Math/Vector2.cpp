@@ -126,19 +126,9 @@ Vector2 Vector2::normalized() {
 	return Vector2(x * _length, y * _length);
 }
 
-Vector2 Vector2::operator+(const Vector2& b)
-{
-	return Vector2(x + b.x, y + b.y);
-}
-
 Vector2 Vector2::operator-()
 {
 	return Vector2(-x, -y);
-}
-
-Vector2 Vector2::operator-(const Vector2& b)
-{
-	return Vector2(x - b.x, y - b.y);
 }
 
 Vector2 Vector2::operator*(float b)
@@ -207,12 +197,4 @@ const float& Vector2::operator[](unsigned int index) const { if(index) { return 
 Vector2 operator*(float a, const Vector2& b)
 {
 	return Vector2(a * b.x, a * b.y);
-}
-
-Vector2 operator-(const Vector2& a, const Vector2& b) {
-	return Vector2(a.x - b.x, a.y - b.y);
-}
-
-Vector2 operator+(const Vector2& a, const Vector2& b) {
-	return Vector2(a.x + b.x, a.y + b.y);
 }

@@ -1,7 +1,6 @@
-#include "../../IOSystem/Windows/resource.h"
+#include "./resource.h"
  
 IDI_ICON ICON "../Resources/UE.ico"
-IDI_NONECURSOR CURSOR "../Resources/NoneCursor.cur"
 
 1 VERSIONINFO
 FILEVERSION     1,0,0,0

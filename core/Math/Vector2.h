@@ -21,9 +21,7 @@ public:
 	Vector2 normalized();
 public:
 	Vector2& operator=(const Vector3 b);
-	Vector2 operator+(const Vector2& b);
 	Vector2 operator-();
-	Vector2 operator-(const Vector2& b);
 	Vector2 operator*(float b);
 	inline Vector2 operator*(Vector2 b) { return {x * b.x, y * b.y}; }
 	Vector2 operator*(Matrix3x3& matrix);
@@ -62,5 +60,5 @@ inline bool counterClockwise(const Vector2& a, const Vector2& b, const Vector2& 
     return (b.x - a.x)*(c.y - a.y) - (b.y - a.y)*(c.x - a.x) > 0;
 }
 Vector2 operator*(float a, const Vector2& b);
-Vector2 operator-(const Vector2& a, const Vector2& b);
-Vector2 operator+(const Vector2& a, const Vector2& b);
+inline Vector2 operator-(const Vector2 a, const Vector2 b) { return { a.x - b.x, a.y - b.y }; }
+inline Vector2 operator+(const Vector2 a, const Vector2 b) { return { a.x + b.x, a.y + b.y }; }

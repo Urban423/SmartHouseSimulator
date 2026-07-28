@@ -143,9 +143,50 @@ void Matrix4x4::setRotation(const Quaternion rotation)
 	mat[3][3] = 1;
 }
 
-float* Matrix4x4::getPtr()
-{
-	return &mat[0][0];
+Quaternion Matrix4x4::getRotation() const {
+    Quaternion q;
+
+    float trace = mat[0][0] + mat[1][1] + mat[2][2];
+
+    if (trace > 0.0f)
+    {
+        float s = sqrtf(trace + 1.0f) * 2.0f;
+
+        q.w = 0.25f * s;
+        q.x = (mat[2][1] - mat[1][2]) / s;
+        q.y = (mat[0][2] - mat[2][0]) / s;
+        q.z = (mat[1][0] - mat[0][1]) / s;
+    }
+    else if (mat[0][0] > mat[1][1] && mat[0][0] > mat[2][2])
+    {
+        float s = sqrtf(1.0f + mat[0][0] - mat[1][1] - mat[2][2]) * 2.0f;
+
+        q.w = (mat[2][1] - mat[1][2]) / s;
+        q.x = 0.25f * s;
+        q.y = (mat[0][1] + mat[1][0]) / s;
+        q.z = (mat[0][2] + mat[2][0]) / s;
+    }
+    else if (mat[1][1] > mat[2][2])
+    {
+        float s = sqrtf(1.0f + mat[1][1] - mat[0][0] - mat[2][2]) * 2.0f;
+
+        q.w = (mat[0][2] - mat[2][0]) / s;
+        q.x = (mat[0][1] + mat[1][0]) / s;
+        q.y = 0.25f * s;
+        q.z = (mat[1][2] + mat[2][1]) / s;
+    }
+    else
+    {
+        float s = sqrtf(1.0f + mat[2][2] - mat[0][0] - mat[1][1]) * 2.0f;
+
+        q.w = (mat[1][0] - mat[0][1]) / s;
+        q.x = (mat[0][2] + mat[2][0]) / s;
+        q.y = (mat[1][2] + mat[2][1]) / s;
+        q.z = 0.25f * s;
+    }
+
+    q.normalize();
+    return q;
 }
 
 

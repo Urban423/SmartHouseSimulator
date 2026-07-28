@@ -49,10 +49,13 @@ void UISystem::Update() {
 
     bool clickDown = IOSystem::getKeyBoard().GetKeyDown(KeyCode_LeftMouseButton);
     bool click = IOSystem::getKeyBoard().GetKey(KeyCode_LeftMouseButton);
-    if(clickDown) focusedInputField = Object();
-    
     CursorType cursor = CursorType::Arrow;
 
+
+    if(clickDown) {
+        focusedInputField = Object();
+        if(cursorImage.valid()) cursorImage.GetComponent<Active>().enabled = false;
+    }
 
     Span<Interactable> interactables = ECS::GetComponents<Interactable>();
     for (auto& interactable : interactables) {
@@ -144,42 +147,74 @@ void UISystem::Update() {
             }
             ECS::GetComponent<UIImage>(objID).color = color;
         }
-    }
 
-
-    if(!focusedInputField.valid()) {
-        Span<InputField> inputFields = ECS::GetComponents<InputField>();
-        for(auto& inputField : inputFields) {
-            bool inside = updateInteractable(inputField, mousePos);
-            if(inside) cursor = CursorType::Text;
+        if (ECS::HasComponent<InputField>(objID)) {
+            InputField& inputField = ECS::GetComponent<InputField>(objID);
+            if (inside) cursor = CursorType::Text;
+            
             if(inside && clickDown) {
-               focusedInputField = inputField.object;
+                if(!cursorImage.valid()) {
+                    cursorImage = ECS::createObject();
+                    cursorImage.AddComponent<Active>();
+                    cursorImage.AddComponent<UIPopup>();
+                    cursorImage.AddComponent<UIImage>().setSize(3, 32);
+                }
+
+                focusedInputField = inputField.object;
+
+                Object textInput = focusedInputField.getChild(0);
+                if(textInput.valid() && textInput.HasComponent<UIText>()) {
+                    UIText& uiText = textInput.GetComponent<UIText>();
+                    cursorIndex = uiText.getCursorIndex(mousePos);
+                    Vector2 cursorPos = uiText.getCursorPos(cursorIndex);
+
+                    cursorBlinkTimer = 0;
+                    cursorImage.GetComponent<Active>().enabled = true;
+                    cursorImage.GetComponent<UIImage>().setDepth(uiText.depth + 1);
+                    cursorImage.GetComponent<UIImage>().setOffset(cursorPos);
+                    cursorImage.setParent(focusedInputField);
+                }
             }
         }
     }
     IOSystem::getPlatform().setCursor(cursor);
 
+
+
+    //inputFieldUpdate
     if(focusedInputField.valid() && focusedInputField.HasComponent<InputField>()) {
         Object textInput = focusedInputField.getChild(0);
         if(!textInput.valid() || !textInput.HasComponent<UIText>()) return;
 
         InputField& field = focusedInputField.GetComponent<InputField>();
+
         Input& input = IOSystem::getInput();
+        cursorBlinkTimer += Time::realDeltaTime;
+        if (cursorBlinkTimer >= cursorBlinkRate) {
+            cursorBlinkTimer -= cursorBlinkRate;
+            Active& cursorActive = cursorImage.GetComponent<Active>();
+            cursorActive.enabled = !cursorActive.enabled;
+        }
 
         std::string& text = textInput.GetComponent<UIText>().text;
-        for(int i = 0; i < input.text.size(); i++) {
-            int c = input.text[i];
+        for (char c : input.text) {
             switch (c) {
                 case 8: { //backspace
-                    if(!text.empty()) text.pop_back();
+                    if (cursorIndex > 0 && text.size() > 0) {
+                        text.erase(cursorIndex - 1, 1);
+                        cursorIndex--;
+                    }
                     break;
                 }
 
                 case 9: { //tab
                     if (field.charFilter && !field.charFilter((char)c)) break;
-                    if (text.size() + 3 >= field.maxLength) break;
+                    if (text.size() + 4 >= field.maxLength) break;
                     if(field.onChar) field.onChar(c);
-                    else text.append("    ");
+                    else {
+                        text.insert(cursorIndex, "    ");
+                        cursorIndex += 4;
+                    }
                     break;
                 }
 
@@ -187,7 +222,10 @@ void UISystem::Update() {
                     if (field.charFilter && !field.charFilter((char)c)) break;
                     if (text.size() >= field.maxLength) break;
                     if(field.onSubmit) field.onSubmit();
-                    else text.push_back('\n');
+                    else {
+                        text.insert(text.begin() + cursorIndex, '\n');
+                        cursorIndex++;
+                    }
                     break;
                 }
 
@@ -195,12 +233,59 @@ void UISystem::Update() {
                     if (field.charFilter && !field.charFilter((char)c)) break;
                     if (text.size() >= field.maxLength) break;
                     if(field.onChar) field.onChar(c);
-                    else text.push_back((char)c);
+                    else {
+                        text.insert(cursorIndex, 1, (char)c);
+                        cursorIndex++;
+                    }
                     break;
                 }
             }
         }
-        if(!input.text.empty()) textInput.GetComponent<UIText>().buildMesh();
+
+        bool rebuild = !input.text.empty();
+        for(int c : input.keyEvents) {
+            if (c == KeyCode_LeftArrow) {
+                if (cursorIndex > 0) {
+                    rebuild = true;
+                    cursorIndex--;
+                }
+            }
+
+            if (c == KeyCode_RightArrow) {
+                if (cursorIndex < text.size()) {
+                    rebuild = true;
+                    cursorIndex++;
+                }
+            }
+
+            if (c == KeyCode_Delete) {
+                if (cursorIndex < text.size()){
+                    rebuild = true;
+                    text.erase(cursorIndex, 1);
+                }
+            }
+        }
+
+        if(rebuild)  {
+            UIText& uiText = textInput.GetComponent<UIText>();
+            uiText.buildMesh();
+
+            UIElement* focusedInputFieldUI = TryGetUIElement(focusedInputField.getID());
+            if(focusedInputFieldUI) {
+                Vector2 focusedInputFieldSize = focusedInputFieldUI->getComputedSize();
+                Rebuild(focusedInputField, focusedInputFieldSize.x, focusedInputFieldSize.y, 1.0f);
+            }
+
+            if(uiText.text.size() > 0) {
+                cursorBlinkTimer = 0;
+                cursorImage.GetComponent<Active>().enabled = true;
+                Vector2 cursorPos = uiText.getCursorPos(cursorIndex);
+                cursorImage.GetComponent<UIImage>().setOffset(cursorPos);
+            }
+            else {
+                cursorImage.GetComponent<UIImage>().setOffset(uiText.getOffset2());
+            }
+        }
     }
 }
 

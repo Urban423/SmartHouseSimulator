@@ -134,6 +134,7 @@ void ClientServerSystem::handleClientMessage(MessageView& msg) {
                 PrefabSystem::getInstance().createCamera(localPlayer);
                 netState = NetState::InGame;
             }
+            OverlayManager::SetState(SystemState::Playing);
             break;
         }
 
@@ -230,6 +231,7 @@ void ClientServerSystem::FixedUpdate() {
             (1u << ECS::GetComponentID<Rigidbody>()) |
             (1u << ECS::GetComponentID<Transform>());
         
+        if(Time::tick % 2) return;
         SnapshotPacket snapshot = buildSnapshot(mask);
         NetworkManager::getInstance().pushMessage((char*)snapshot.data.data(), snapshot.data.size(), (char)MSGType::Snapshot);
     } else {

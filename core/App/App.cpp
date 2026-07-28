@@ -16,5 +16,6 @@ void App::onUpdate() {
 		client.update();
 		NetworkManager::getInstance().update();
 		NetworkManager::getInstance().send();
+		client.render();
 	}
 }

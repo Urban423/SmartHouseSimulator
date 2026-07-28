@@ -9,7 +9,7 @@
 
 void Client::create() {
 	Settings& s = SettingsSystem::Load();
-	IOSystem::addWindow(new Window).create("Sanya lol", 960, 540, s.fullscreen, s.vsync);
+	IOSystem::addWindow(new Window).create("Sanya lol", 1020, 540, s.fullscreen, s.vsync);
 	IOSystem::addkeyBorad(new keyBoard).create();
 	IOSystem::addPlatform(new WindowsPlatform).create();
     IOSystem::getInstance().create();
@@ -23,11 +23,14 @@ void Client::create() {
 }
 
 
-// DWORD last = GetTickCount();
-// int frames = 0;
 void Client::update() {
     IOSystem::getInstance().update();
     Scene::Update();
+}
+
+// DWORD last = GetTickCount();
+// int frames = 0;
+void Client::render() {
     RenderManager::onUpdate();
     IOSystem::getWindow().swapBuffers();
     // frames++;

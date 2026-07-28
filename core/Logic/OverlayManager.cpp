@@ -28,17 +28,10 @@ Object createSettings(Object settings) {
     settingsText.GetComponent<UIText>().buildMesh();
     settingsText.setParent(settings);
 
-    PrefabSystem::getInstance().createWidgetLabel("SensitivityX", Object(), false, 255).setParent(settings);
+    PrefabSystem::getInstance().createWidgetLabel("Sensitivity", Object(), false, 255).setParent(settings);
     PrefabSystem::getInstance().createSlider(SettingsSystem::GetSettings().sensitivityX, 
         [](float value) {
             SettingsSystem::GetSettings().sensitivityX = value;
-            SettingsSystem::Save();
-    }).setParent(settings);
-
-
-    PrefabSystem::getInstance().createWidgetLabel("SensitivityY", Object(), false, 255).setParent(settings);
-    PrefabSystem::getInstance().createSlider(SettingsSystem::GetSettings().sensitivityY, 
-        [](float value) {
             SettingsSystem::GetSettings().sensitivityY = value;
             SettingsSystem::Save();
     }).setParent(settings);
@@ -126,7 +119,34 @@ Object createSettings(Object settings) {
     return settings;
 }
 
-Object createPause(int settingsPanelID) {
+Object createPlayersMenu(Object playersMenu) {
+    playersMenu.AddComponent<Active>().enabled = false;
+    auto& playersOverlay = playersMenu.AddComponent<OverlayElement>();
+    playersOverlay.useState = true;
+    playersOverlay.state = SystemState::Paused;
+
+    playersMenu.AddComponent<UIPopup>();
+    auto& playersBox = playersMenu.AddComponent<UIImage>();
+    playersBox.setSize(UISizeFlags::Fill, UISizeFlags::Fill);
+    playersBox.direction = Direction::Vertical;
+    playersBox.alignX = UIAlignFlags::Start;
+    playersBox.alignY = UIAlignFlags::Start;
+    playersBox.overflow = true;
+    playersBox.padding = 32;
+    playersBox.spacing = 10;
+    playersBox.color = Color(0, 0, 0, 50);
+
+    Object playersText = ECS::createObject();
+    playersText.AddComponent<UIText>().text = "PLAYERS";
+    playersText.GetComponent<UIText>().color = 255;
+    playersText.GetComponent<UIText>().fontSize = 64;
+    playersText.GetComponent<UIText>().buildMesh();
+    playersText.setParent(playersMenu);
+
+    return playersMenu;
+}
+
+Object createPause(int settingsPanelID, int playersMenuID) {
     Object pause = ECS::createObject();
     pause.AddComponent<Active>().enabled = true;
     auto& pauseOverlay = pause.AddComponent<OverlayElement>();
@@ -154,11 +174,22 @@ Object createPause(int settingsPanelID) {
     std::vector<std::pair<const char*, std::function<void()>>> buttons = {
         { "Resume", [] { OverlayManager::SetState(SystemState::Playing); }},
 
-        { "Settings", [settingsPanelID] {
-            auto& active = ECS::GetComponent<Active>(settingsPanelID);
-            active.enabled = !active.enabled;
+        { "Players list", [settingsPanelID, playersMenuID] {
+            auto& settingsActive = ECS::GetComponent<Active>(settingsPanelID);
+            settingsActive.enabled = false;
+
+            auto& playersActive = ECS::GetComponent<Active>(playersMenuID);
+            playersActive.enabled = !playersActive.enabled;
         }},
-        { "Exit", [] { OverlayManager::SetState(SystemState::Menu); } },
+
+        { "Settings", [settingsPanelID, playersMenuID] {
+            auto& settingsActive = ECS::GetComponent<Active>(settingsPanelID);
+            settingsActive.enabled = !settingsActive.enabled;
+
+            auto& playersActive = ECS::GetComponent<Active>(playersMenuID);
+            playersActive.enabled = false;
+        }},
+        { "Main menu", [] { OverlayManager::SetState(SystemState::Menu); } },
     };
     for(int i = 0; i < buttons.size(); i++) {
         Object button = PrefabSystem::getInstance().createButton(buttons[i].first, buttons[i].second);
@@ -250,7 +281,7 @@ Object createMultiplayerMenu(Object menu) {
     Object joinIPPanel = PrefabSystem::getInstance().createInputField("192.185.186.222", 16, [](char c) {
         return std::isdigit(static_cast<unsigned char>(c)) || c == '.';
     });
-    joinIPPanel.GetComponent<UIImage>().setSize(UISizeFlags::Fill | UISizeFlags::Wrap, UISizeFlags::Wrap);
+    joinIPPanel.GetComponent<UIImage>().weight = 4;
     // Object joinIPPanelWidget = PrefabSystem::getInstance().createWidgetLabel("IP", joinIPPanel, true, 255);
     joinIPPanel.setParent(joinFields);
 
@@ -258,7 +289,6 @@ Object createMultiplayerMenu(Object menu) {
     Object joinPort = PrefabSystem::getInstance().createInputField("7777", 5, [](char c) {
         return std::isdigit(static_cast<unsigned char>(c));
     });
-    joinPort.GetComponent<UIImage>().setSize(UISizeFlags::Fill | UISizeFlags::Wrap, UISizeFlags::Wrap);
     // Object joinPortWidget = PrefabSystem::getInstance().createWidgetLabel("Port", joinPort, true, 255);
     joinPort.setParent(joinFields);
 
@@ -266,7 +296,6 @@ Object createMultiplayerMenu(Object menu) {
     int joinPortID = joinPort.getChild(0).getID();
     Object connectButton = PrefabSystem::getInstance().createButton("Connect", [joinIPPanelID, joinPortID] {
         ClientServerSystem::getInstance().connect(ECS::GetComponent<UIText>(joinIPPanelID).text.c_str(), std::stoi(ECS::GetComponent<UIText>(joinPortID).text));
-        OverlayManager::SetState(SystemState::Playing);
     });
     connectButton.setParent(joinPanel);
 
@@ -300,9 +329,9 @@ Object createMenu(int settingsPanelID, int multiplayerMenu) {
     text.setParent(menu);
 
     std::vector<std::pair<const char*, std::function<void()>>> buttons = {
-        { "Play Offline", [] { OverlayManager::SetState(SystemState::Playing); }},
+        { "Singleplayer", [] { OverlayManager::SetState(SystemState::Playing); }},
 
-        { "Play Online", [multiplayerMenu, settingsPanelID] { 
+        { "Multiplayer", [multiplayerMenu, settingsPanelID] { 
             auto& activeMenu = ECS::GetComponent<Active>(multiplayerMenu);
             activeMenu.enabled = !activeMenu.enabled;
 
@@ -317,7 +346,7 @@ Object createMenu(int settingsPanelID, int multiplayerMenu) {
             auto& activeSettings = ECS::GetComponent<Active>(settingsPanelID);
             activeSettings.enabled = !activeSettings.enabled;
         }},
-        { "Exit", [] { IOSystem::getWindow().onDestroy(); } },
+        { "Exit game", [] { IOSystem::getWindow().onDestroy(); } },
     };
     for(int i = 0; i < buttons.size(); i++) {
         Object button = PrefabSystem::getInstance().createButton(buttons[i].first, buttons[i].second);
@@ -336,6 +365,8 @@ void OverlayManager::Create() {
     uiLayout.GetComponent<UIImage>().direction = Direction::Horizontal;
     uiLayout.GetComponent<UIImage>().alignX = UIAlignFlags::Center;
     uiLayout.GetComponent<UIImage>().alignY = UIAlignFlags::Start;
+    uiLayout.GetComponent<UIImage>().widthFlags  = UISizeFlags::Fixed;
+    uiLayout.GetComponent<UIImage>().heightFlags = UISizeFlags::Fixed;
     uiLayout.GetComponent<UIImage>().spacing = 10;
     uiLayout.GetComponent<UIImage>().padding = 10;
 
@@ -358,11 +389,15 @@ void OverlayManager::Create() {
     Object settings = ECS::createObject();
     int settingsID = settings.getID();
 
+    Object playersMenu = ECS::createObject();
+    int playersMenuID = playersMenu.getID();
+
     Object multiplayerMenu = ECS::createObject();
     int multiplayerMenuID = multiplayerMenu.getID();
 
     createMenu(settingsID, multiplayerMenuID).setParent(uiLeft);
-    createPause(settingsID).setParent(uiLeft);
+    createPause(settingsID, playersMenuID).setParent(uiLeft);
+    createPlayersMenu(playersMenu).setParent(uiRight);
     createMultiplayerMenu(multiplayerMenu).setParent(uiRight);
     createSettings(settings).setParent(uiRight);
 

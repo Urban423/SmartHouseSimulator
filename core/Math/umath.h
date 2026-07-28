@@ -1,9 +1,5 @@
 #pragma once
 #include "Vector2.h"
-#include "Vector3.h"
-#include "Vector4.h"
-#include "Quaternion.h"
-#include "Matrix4x4.h"
 
 #define RGB_TO_INT(r, g, b) (((r) << 16) + ((g) << 8) + (b))
 
@@ -15,6 +11,8 @@ struct TextureStruct
 };
 
 namespace Math {
+    constexpr float PI = 3.14159265358979323846f;
+	
 	inline float Clamp(float a, float b, float value) {
 		if(value < a) return a;
 		if(value > b) return b;
@@ -29,6 +27,12 @@ namespace Math {
 	inline T Min(T a, T b) {
 		if(a > b) return b;
 		return a;
+	}
+
+	inline float clamp(float value, float a, float b) {
+		if(value < a) return a;
+		if(value > b) return b;
+		return value;
 	}
 };
 

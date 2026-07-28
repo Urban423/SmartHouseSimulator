@@ -93,29 +93,6 @@ struct RenderView : public Component {
 
 struct ScreenBlock : public Component {};
 
-class TextView : public Component {
-public:
-	inline void buildMesh() {
-		float fontSize = 0.8f;
-        if(meshID == -1) {
-            Mesh mesh;
-            meshID = MeshManager::addMesh(mesh);
-        }
-        Vector2 newSize = MeshManager::getMeshByID(meshID).calculateAndRebuildTextMesh(text, fontSize, 0, 0);
-	}
-	inline int getId() { return meshID; }
-
-	int layout = 0;
-	std::string text;
-	Color color = Color(1, 1, 1, 1);
-
-private:
-	int meshID = -1;
-	bool dirty = true;
-};
-
-
-
 
 struct NetworkIdentity: Component {
 public:

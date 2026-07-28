@@ -43,5 +43,7 @@ create_library(LIB "platforms/${CMAKE_SYSTEM_NAME}")
 list(APPEND LINK_LIBS LIB)
 
 
-add_executable(${CMAKE_PROGRAM_NAME} platforms/${CMAKE_SYSTEM_NAME}/main.cpp)
+add_executable(${CMAKE_PROGRAM_NAME} 
+    platforms/${CMAKE_SYSTEM_NAME}/main.cpp
+    platforms/${CMAKE_SYSTEM_NAME}/ManifestWindows.rc)
 target_link_libraries(${CMAKE_PROGRAM_NAME} ${LINK_LIBS})

@@ -54,9 +54,15 @@ public:
 
 	void solve(SphereCollider& s1, SphereCollider& s2);
 	void solve(SphereCollider& s, TerrainCollider& t);
+
 	void solve(SphereCollider& sphere, CubeCollider& cube);
 	void solve(TerrainCollider& terrain, CubeCollider& cube);
 	void solve(CubeCollider& cubeA, CubeCollider& cubeB);
+
+	void solve(TerrainCollider& terrain, CapsuleCollider& capsule);
+	void solve(SphereCollider& sphere, CapsuleCollider& capsule);
+	void solve(CubeCollider& cube, CapsuleCollider& capsule);
+	void solve(CapsuleCollider& capsule1, CapsuleCollider& capsule2);
 
 	template<typename A, typename B>
     void solveAdapter(Collider* a, Collider* b);
@@ -119,27 +125,38 @@ public:
 		sphereColliders = ECS::GetComponents<SphereCollider>();
 		terrainColliders = ECS::GetComponents<TerrainCollider>();
 		cubeColliders = ECS::GetComponents<CubeCollider>();
+		capsuleColliders = ECS::GetComponents<CapsuleCollider>();
 	};
 	~PhysicView() {};
 
 	Collider& operator[](unsigned int index) {
-		unsigned int spheresAndTerrainsCount = sphereColliders.size() + terrainColliders.size();
-		if (index < sphereColliders.size()) {
-			return sphereColliders[index];
-		} else if(index < spheresAndTerrainsCount) {
-			return terrainColliders[index - sphereColliders.size()];
-		} else {
-			return cubeColliders[index - spheresAndTerrainsCount];
-		}
+		unsigned int offset = 0;
+        if (index < offset + sphereColliders.size()) {
+            return sphereColliders[index - offset];
+        }
+
+        offset += sphereColliders.size();
+        if (index < offset + terrainColliders.size()) {
+            return terrainColliders[index - offset];
+        }
+
+        offset += terrainColliders.size();
+        if (index < offset + cubeColliders.size()) {
+            return cubeColliders[index - offset];
+        }
+
+        offset += cubeColliders.size();
+        return capsuleColliders[index - offset];
 	}
 
 	unsigned int size() const {
-		return sphereColliders.size() + terrainColliders.size() + cubeColliders.size();
+		return sphereColliders.size() + terrainColliders.size() + cubeColliders.size() + capsuleColliders.size();
 	}
 private:
 	Span<SphereCollider> sphereColliders;
 	Span<TerrainCollider> terrainColliders;
 	Span<CubeCollider> cubeColliders;
+	Span<CapsuleCollider> capsuleColliders;
 };
 
 #include "Physic.hpp"

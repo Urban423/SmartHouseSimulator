@@ -25,6 +25,22 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
 			IOSystem::getPlatform().addText((int)wParam);
 			break;
 		}
+		case WM_SIZE: {
+			switch (wParam) {
+			case SIZE_MAXIMIZED:
+				IOSystem::onWindowResizeFinished();
+				break;
+
+			case SIZE_RESTORED:
+				IOSystem::onWindowResizeFinished();
+				break;
+
+			case SIZE_MINIMIZED:
+				break;
+			}
+
+			break;
+		}
 		case WM_KEYDOWN: {
 			IOSystem::getPlatform().addKeyEvent((int)wParam);
 			break;
