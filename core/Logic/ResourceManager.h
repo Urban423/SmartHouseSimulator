@@ -39,9 +39,7 @@ enum MeshID {
 #define SHADERS \
     FIELD(standartShader) \
     FIELD(mainPanel) \
-    FIELD(shader3) \
     FIELD(terrainShader) \
-    FIELD(shader5) \
     FIELD(textShader) \
     FIELD(uiShader)
 

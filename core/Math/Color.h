@@ -22,12 +22,32 @@ public:
 	};
 	Color(char r, char g, char b, char a) : r(r), g(g), b(b), a(a) {};
 
-	inline Vector4 ToVector4() const
-	{
+	inline Vector4 ToVector4() const {
 		constexpr float inv = 1.0f / 255.0f;
 		return {r * inv, g * inv, b * inv, a * inv};
 	}
 
+	inline unsigned char& operator[](int index) {
+		switch(index) {
+			case(0): {
+				return r;
+			}
+			case(1): {
+				return g;
+			}
+			case(2): {
+				return b;
+			}
+			case(3): {
+				return a;
+			}
+		}
+		return r;
+	}
+
+	inline int ToINT() const {
+		return ((int)a << 24) | ((int)r << 16) | ((int)g << 8) | b;
+	}
 public:
 	unsigned char r = 0;
 	unsigned char g = 0;

@@ -7,6 +7,7 @@
 #include "PerlinNoise.h"
 #include "UIManager.h"
 #include "ResourceManager.h"
+#include "AtlasManager.h"
 
 RenderManager *RenderManager::renderManager = new RenderManager();
 
@@ -18,9 +19,13 @@ void RenderManager::init() {
 	whiteTexture.pixels = (int*)&white;
 	TextureManager::CreateTexture(whiteTexture);
 
-	TextureStruct atlasTexture;
-	IOSystem::readImage(atlasTexture, "Textures/urok_17_opengl.png");
-	TextureManager::CreateTexture(atlasTexture);
+
+
+	TTFAtlas atlas;
+	IOSystem::readTTF(atlas, "fonts/MyriadWeb.ttf");
+	atlas.toTexture();
+	AtlasManager::SetAtlas(atlas);
+
 
 	// create texture
 	#define FIELD(name) \

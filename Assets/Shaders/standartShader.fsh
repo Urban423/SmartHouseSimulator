@@ -48,16 +48,16 @@ void main()
     vec3 night   = vec3(0.1, 0.2, 0.5);
 	
 	float dayCycle = mod(3200 + time, 12220.0) / 12220.0; // [0.0, 1.0]
-	vec3 lightColor;
+	vec3 lightColor = vec3(1, 1, 1);
 
-    if (dayCycle < 0.25)
-        lightColor = mix(night, morning, dayCycle / 0.25);       // Night → Morning
-    else if (dayCycle < 0.5)
-        lightColor = mix(morning, day, (dayCycle - 0.25) / 0.25); // Morning → Day
-    else if (dayCycle < 0.75)
-        lightColor = mix(day, evening, (dayCycle - 0.5) / 0.25);  // Day → Evening
-    else
-        lightColor = mix(evening, night, (dayCycle - 0.75) / 0.25); // Evening → Night
+    //if (dayCycle < 0.25)
+    //    lightColor = mix(night, morning, dayCycle / 0.25);       // Night → Morning
+    //else if (dayCycle < 0.5)
+    //    lightColor = mix(morning, day, (dayCycle - 0.25) / 0.25); // Morning → Day
+    //else if (dayCycle < 0.75)
+    //    lightColor = mix(day, evening, (dayCycle - 0.5) / 0.25);  // Day → Evening
+    //else
+    //    lightColor = mix(evening, night, (dayCycle - 0.75) / 0.25); // Evening → Night
 	
     _TMP0 = dot(normalize(TEX1.xyz), normalize(_LightDir));
     _diffuse = max(_TMP0, 0.0) + 0.5;

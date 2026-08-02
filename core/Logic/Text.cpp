@@ -1,62 +1,64 @@
 #include "UIManager.h"
 
-inline Vector2 calculateStringMeshSize(std::string& text, float glyphWidth, float glyphHeight, float letterSpacing, float lineSpacing, int& specialChars) {
+inline Vector2 calculateStringMeshSize(std::string& text, TTFAtlas& atlas, float scale, float glyphHeight, float letterSpacing, float lineSpacing, int& specialChars) {
     specialChars = 0;
 
     int lineCounter = 1;
     int glyphInRaw = 0;
     int maxGlyphInRaw = 0;
+    float maxGlyphInWidth = 0;
+    float width;
     for (auto letter : text) {
         if (letter == '\n') {
-            maxGlyphInRaw = std::max(maxGlyphInRaw, glyphInRaw);
             ++specialChars;
             ++lineCounter;
+            if(glyphInRaw > maxGlyphInRaw) maxGlyphInRaw = glyphInRaw;
+            if(width > maxGlyphInWidth) maxGlyphInWidth = width;
+            width = 0;
             glyphInRaw = 0;
             continue;
         }
         ++glyphInRaw;
+        width += atlas.getCharacterWidth(letter);
     }
-    maxGlyphInRaw = std::max(maxGlyphInRaw, glyphInRaw);
-    return { maxGlyphInRaw * glyphWidth + (letterSpacing * (maxGlyphInRaw - 1)), lineCounter * glyphHeight + (lineSpacing * (lineCounter - 1))};
+    if(width > maxGlyphInWidth) maxGlyphInWidth = width;
+    if(glyphInRaw > maxGlyphInRaw) maxGlyphInRaw = glyphInRaw;
+    return { scale * maxGlyphInWidth + letterSpacing * (maxGlyphInRaw - 1), lineCounter * glyphHeight + (lineSpacing * (lineCounter - 1))};
 }
 
-void buildTextMesh(Mesh& out, std::string& text, float fontSize, float letterSpacing, float lineSpacing, Vector2 offset) {
+void buildTextMesh(Mesh& out, TTFAtlas& atlas, float scale, Rect boundingBox, std::string& text, float characterHeight, float letterSpacing, float lineSpacing, Vector2 offset) {
     float x = offset.x;
     float y = offset.y;
     int v = 0;
     int ind = 0;
     for (auto letter: text) {
         if (letter == '\n') {
-            y += fontSize + lineSpacing;
+            y += characterHeight + lineSpacing;
             x = offset.x;
             continue;
         }
 
-        int glyph = letter;
-        std::string test = " !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_'abcdefghijklmnopqrstuvwxyz{|}~ ÇüéâäàÉæÆôöòåçêèèïîìÄAûùÿÖÜø£Ø×ƒ        Ë               ë       АБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯабвгдеёжзийклмнопрстуфхцчшщъыьэюя";
-        for (int j = 0; j < test.size(); j++) {
-            if (letter == test[j]) {
-                glyph = j;
-                break;
-            }
-        }
-        int cellX = glyph % 16;
-        int cellY = glyph / 16;
-        float u0 = cellX / 16.0f;
-        float u1 = (cellX + 1) / 16.0f;
-        float v0 = 1.0f - (cellY + 1) / 16.0f;
-        float v1 = 1.0f - cellY / 16.0f;
+        int characterIndex = atlas.getCharacterIndex(letter);
+        if(characterIndex == -1) continue;
 
-        out.vertices[v + 0].pos = {x, -fontSize - y, 0};
-        out.vertices[v + 1].pos = {x + fontSize, -fontSize - y, 0};
-        out.vertices[v + 2].pos = {x + fontSize, -y, 0};
-        out.vertices[v + 3].pos = {x, -y, 0};
-        x += fontSize + letterSpacing;
+        // characterIndex = 76;
+        Glyph& glyph = atlas.getGlyph(characterIndex);
+        Rect uv = glyph.getUV();
+			// printf("%f %f %f %f\n", uv.left, uv.top, uv.right, uv.bottom);
+        float glyphWidth = scale * glyph.width();
+        float glyphHeight = scale * glyph.height();
+        float top = -y - scale * (boundingBox.bottom - glyph.yMin);
 
-        out.vertices[v + 0].uv = {u0, v0};
-        out.vertices[v + 1].uv = {u1, v0};
-        out.vertices[v + 2].uv = {u1, v1};
-        out.vertices[v + 3].uv = {u0, v1};
+        out.vertices[v + 0].pos = {x,               top,                    0};
+        out.vertices[v + 1].pos = {x + glyphWidth,  top,                    0};
+        out.vertices[v + 2].pos = {x + glyphWidth,  top + glyphHeight,      0};
+        out.vertices[v + 3].pos = {x,               top + glyphHeight,      0};
+        x += glyphWidth + letterSpacing;
+
+        out.vertices[v + 0].uv = {uv.left, uv.top};
+        out.vertices[v + 1].uv = {uv.right, uv.top};
+        out.vertices[v + 2].uv = {uv.right, uv.bottom};
+        out.vertices[v + 3].uv = {uv.left, uv.bottom};
 
         out.vertices[v + 0].normal = {0, 0, 1};
         out.vertices[v + 1].normal = {0, 0, 1};
@@ -75,10 +77,12 @@ void buildTextMesh(Mesh& out, std::string& text, float fontSize, float letterSpa
     }
 }
 
-Vector2 calculateAndRebuildTextMesh(Mesh& out, std::string& text, float fontSize, float letterSpacing, float lineSpacing, UIAlignFlags align) {
+Vector2 calculateAndRebuildTextMesh(Mesh& out, TTFAtlas& atlas, std::string& text, float fontSize, float letterSpacing, float lineSpacing, UIAlignFlags align) {
+    Rect boundingBox = atlas.getBoundingBox();
+    float scale =  (float)fontSize / boundingBox.height();
     int specialChars = 0;
     int charCount = text.size();
-    Vector2 textSize = calculateStringMeshSize(text, fontSize, fontSize, letterSpacing, lineSpacing, specialChars);
+    Vector2 textSize = calculateStringMeshSize(text, atlas, scale, fontSize, letterSpacing, lineSpacing, specialChars);
 
     int indicesSize = (charCount - specialChars) * 6;
     out.vertices.resize((charCount - specialChars) * 4);
@@ -87,7 +91,7 @@ Vector2 calculateAndRebuildTextMesh(Mesh& out, std::string& text, float fontSize
     out.materials[0] = indicesSize;
 
     Vector2 offset = -textSize / 2;
-    buildTextMesh(out, text, fontSize, letterSpacing, lineSpacing, offset);
+    buildTextMesh(out, atlas, scale, boundingBox, text, fontSize, letterSpacing, lineSpacing, offset);
     out.syncWithGPU();
     return textSize;
 }

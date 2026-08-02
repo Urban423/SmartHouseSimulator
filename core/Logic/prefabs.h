@@ -39,7 +39,7 @@ public:
         player.AddComponent<Rigidbody>().isKinematic;
         player.GetComponent<Rigidbody>().angularLock = AxisLock::X | AxisLock::Y | AxisLock::Z;
         // player.GetComponent<Rigidbody>().linearLock = AxisLock::X | AxisLock::Y | AxisLock::Z; 
-        player.AddComponent<CapsuleCollider>();
+        player.AddComponent<CapsuleCollider>().mask = 1;
         player.AddComponent<CameraControlSystem>(); 
         player.AddComponent<InputComponent>(); 
         player.AddComponent<NetworkIdentity>();
@@ -100,8 +100,8 @@ public:
         return cylinder;
     }
 
-    Object createTerrain() {
-        int perlinMeshID = MeshManager::addMesh(PerlinNoiseMesh(100, 100, 2.0f, 3, 0.9f, 8, 12312));
+    Object createTerrain(float scale) {
+        int perlinMeshID = MeshManager::addMesh(PerlinNoiseMesh(100, 100, 2.0f, 3, 0.9f, scale, 12312));
         Object perlinMesh = ECS::createObject();
         perlinMesh.AddComponent<RenderView>().mesh_index = perlinMeshID;
         perlinMesh.GetComponent<RenderView>().materals[0] = perlinMat;

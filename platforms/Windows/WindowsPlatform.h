@@ -16,6 +16,14 @@ public:
 		isVisible = show; 
 		applyCursor(); 
 	}
+	inline Vector2 getDPI() {
+		SetProcessDPIAware();
+		HDC screen = GetDC(NULL);
+		double hPixelsPerInch = GetDeviceCaps(screen,LOGPIXELSX);
+		double vPixelsPerInch = GetDeviceCaps(screen,LOGPIXELSY);
+		ReleaseDC(NULL, screen);
+		return { hPixelsPerInch, vPixelsPerInch };
+	}
     inline Vector2 getCursorPosition() { 
 		POINT p;
 		GetCursorPos(&p);

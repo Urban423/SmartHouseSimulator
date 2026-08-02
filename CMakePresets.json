@@ -12,8 +12,8 @@
             "generator": "Ninja",
             "binaryDir": "${sourceDir}/.CMakeFiles",
             "cacheVariables": {
-                "CMAKE_PROJECT_NAME": "OnlineAlpha",
-                "CMAKE_PROGRAM_NAME": "OnlineAlpha",
+                "CMAKE_PROJECT_NAME": "GlassWars",
+                "CMAKE_PROGRAM_NAME": "GlassWars",
                 "PROGRAM_INPUT_DATA": "",
                 "PROGRAM_VERSION": "1.0",
                 "ENABLE_VERSIONING_BUILD": "ON",

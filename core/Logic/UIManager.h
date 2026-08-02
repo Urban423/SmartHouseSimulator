@@ -3,6 +3,7 @@
 #include "ECS.h"
 #include "DirtyValue.h"
 #include "MeshManager.h"
+#include "AtlasManager.h"
 
 enum class Anchor : uint8_t {
     TopLeft,
@@ -40,7 +41,7 @@ enum class UIAlignFlags : uint8_t {
 inline UISizeFlags operator|(UISizeFlags a, UISizeFlags b) { return static_cast<UISizeFlags>(static_cast<uint8_t>(a) | static_cast<uint8_t>(b)); }
 inline UISizeFlags operator&(UISizeFlags a, UISizeFlags b) { return static_cast<UISizeFlags>(static_cast<uint8_t>(a) & static_cast<uint8_t>(b)); }
 
-Vector2 calculateAndRebuildTextMesh(Mesh& out, std::string& text, float fontSize, float letterSpacing, float lineSpacing, UIAlignFlags align);
+Vector2 calculateAndRebuildTextMesh(Mesh& out, TTFAtlas& atlas, std::string& text, float fontSize, float letterSpacing, float lineSpacing, UIAlignFlags align);
 size_t getMeshCursorIndex(Mesh& mesh, Vector2 mousePos);
 Vector2 getMeshCursorPos(Mesh& mesh, size_t cursorIndex);
 
@@ -130,8 +131,8 @@ struct UIImage : public Component, public UIElement {
 struct UIText : public Component, public UIElement {
 public:
 	int meshID = -1;
-    float fontSize = 32;
-    float letterSpacing = -9;
+    float fontSize = 56;
+    float letterSpacing = 2;
     std::string text;
 	Color color = 0;
 
@@ -145,7 +146,8 @@ public:
             Mesh mesh;
             meshID = MeshManager::addMesh(mesh);
         }
-        Vector2 newSize = calculateAndRebuildTextMesh(MeshManager::getMeshByID(meshID), text, fontSize, letterSpacing, 0, alignX);
+        float pixelHeight = fontSize * IOSystem::getPlatform().DPI()[1] / 72.0f;
+        Vector2 newSize = calculateAndRebuildTextMesh(MeshManager::getMeshByID(meshID), AtlasManager::GetAtlas(), text, pixelHeight, letterSpacing, 0, alignX);
         setSize(newSize.x, newSize.y);
     }
     size_t getCursorIndex(Vector2 mousePos) {
@@ -153,7 +155,9 @@ public:
         return getMeshCursorIndex(MeshManager::getMeshByID(meshID), mousePos - this->getOffset2());
     }
     Vector2 getCursorPos(size_t cursorIndex) {
-        return this->getOffset2() + getMeshCursorPos(MeshManager::getMeshByID(meshID), cursorIndex);
+        Vector2 cursorPos = getMeshCursorPos(MeshManager::getMeshByID(meshID), cursorIndex);
+        cursorPos.y = 0;
+        return this->getOffset2() + cursorPos;
     }
 	inline int getId() { return meshID; }
 };
@@ -172,7 +176,7 @@ public:
             Mesh mesh;
             meshID = MeshManager::addMesh(mesh);
         }
-        Vector2 newSize = calculateAndRebuildTextMesh(MeshManager::getMeshByID(meshID), text, fontSize, 0, 0, UIAlignFlags::Center);
+        Vector2 newSize = calculateAndRebuildTextMesh(MeshManager::getMeshByID(meshID), AtlasManager::GetAtlas(), text, fontSize, 0, 0, UIAlignFlags::Center);
 	}
 	inline int getId() { return meshID; }
 };

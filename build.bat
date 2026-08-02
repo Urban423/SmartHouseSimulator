@@ -46,5 +46,5 @@ IF ERRORLEVEL 1 (
 
 echo Start building
 docker run --rm -v "%PROJECT_NAME%:/workspace" -v "%PROJECT_PATH%:/host_project" %IMAGE_NAME% bash /host_project/tools/build.sh %PLATFORM%
-@REM start "" "./build/OnlineAlpha/OnlineAlpha.exe"
-"./build/OnlineAlpha/OnlineAlpha.exe"
+@REM start "" "./build/GlassWars/GlassWars.exe"
+"./build/GlassWars/GlassWars.exe"

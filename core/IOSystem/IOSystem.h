@@ -8,6 +8,7 @@
 #include "umath.h"
 #include "Mesh.h"
 #include "KeyCodes.h"
+#include "TTFAtlas.h"
 #include <math.h>
 #include <vector>
 #include <mutex>
@@ -190,12 +191,17 @@ public:
 	virtual void update() = 0;
 	virtual double getTime() = 0;
     virtual Vector2 getCursorPosition() = 0;
+	virtual Vector2 getDPI() = 0;
 	virtual void setCursorPosition(int x, int y) = 0;
     virtual void showCursor(const bool show) = 0;
     virtual void setCursor(const CursorType cursorType) = 0;
 	virtual void getSupportedResolutions(std::vector<std::pair<int, int>>& out) = 0;
 public:
-    void addText(int c) {
+	void init() {
+		dpi = getDPI();
+	}
+	Vector2 DPI() { return dpi; }
+	void addText(int c) {
         textBuffer.push_back(c);
     }
 	void getText(std::vector<int>& out) {
@@ -212,6 +218,7 @@ public:
 private:
     std::vector<int> textBuffer;
     std::vector<int> keyEventQueue;
+	Vector2 dpi;
 };
 
 class IOSystem {
@@ -220,6 +227,7 @@ public:
 	void update();
 
 	static std::vector<Mesh> readFBX(const char* filename);
+	static bool readTTF(TTFAtlas& out, const char* filename);
 	static bool readBMP(TextureStruct& out, const char* filename);
 	static bool readPNG(TextureStruct& out, const char* filename);
 	static bool readImage(TextureStruct& out, const char* filename) {

@@ -80,7 +80,7 @@ float Vector2::DistanceToSegment(const Vector2& a, const Vector2& b, const Vecto
     float abLenSq = ab.squareLength();
     if (abLenSq == 0.0f) return distFunc(a, p);
 
-    float t = Vector2::dotProduct(ap, ab) / abLenSq;
+    float t = Vector2::Dot(ap, ab) / abLenSq;
     t = std::max(0.0f, std::min(1.0f, t));
 
     Vector2 closest = a + ab * t;

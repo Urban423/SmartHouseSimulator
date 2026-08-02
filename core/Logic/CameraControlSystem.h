@@ -83,10 +83,10 @@ public:
 		//interact
 		if(input.actionPressed) {
 			RayHit hit;
-			// if (PhysicSystem::RayCast(object.transform.position, object.transform.rotation * Vector3(0, 0, -1), 100.0f, hit)) {
-				// obj.transform.position = hit.point;
+			if (PhysicSystem::RayCast(object.transform.position + camera.transform.position, object.transform.rotation * camera.transform.rotation * Vector3(0, 0, -1), 100.0f, hit, 0)) {
+				obj.transform.position = hit.point;
 				// printf("%d\n", hit.collider->object.HasComponent<Rigidbody>());
-			// }
+			}
 		}
 
 		if(IOSystem::getKeyBoard().GetKeyDown(KeyCode_P)) ClientServerSystem::getInstance().connect("127.0.0.1", 7777);

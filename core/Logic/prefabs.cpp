@@ -6,6 +6,7 @@ Object PrefabSystem::createWidgetLabel(const char* label, Object widget, bool ho
     commonParent.GetComponent<UIBox>().direction = horizontal ? Direction::Horizontal: Direction::Vertical;
     commonParent.GetComponent<UIBox>().alignX = UIAlignFlags::Start;
     commonParent.GetComponent<UIBox>().alignY = UIAlignFlags::Center;
+    commonParent.GetComponent<UIBox>().spacing = 20;
 
     Object labelText = ECS::createObject();
     labelText.AddComponent<UIText>().text = label;

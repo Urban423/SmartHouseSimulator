@@ -434,7 +434,7 @@ inline void PhysicSystem::solve(Collider* a, Collider* b)
     if(dispatch[typeA][typeB]) (this->*dispatch[typeA][typeB])(a, b);
 }
 
-inline bool PhysicSystem::calculateRayCast(Vector3 origin, Vector3 direction, float distance, RayHit& rayHit) {
+inline bool PhysicSystem::calculateRayCast(Vector3 origin, Vector3 direction, float distance, RayHit& rayHit, char mask) {
 	PhysicView physicView;
 	bool found = false;
     float closest = distance;
@@ -442,7 +442,7 @@ inline bool PhysicSystem::calculateRayCast(Vector3 origin, Vector3 direction, fl
 	for(int i = 0; i < physicView.size(); i++) {
         Collider& c = physicView[i];
         RayHit tempHit;
-		if(calculateRayHit(origin, direction, distance, tempHit, c)) {
+		if(calculateRayHit(origin, direction, distance, tempHit, c, mask)) {
 			if(tempHit.distance < closest) {
 				closest = tempHit.distance;
 				rayHit = tempHit;

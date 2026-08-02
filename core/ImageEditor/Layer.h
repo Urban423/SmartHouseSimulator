@@ -28,6 +28,7 @@ public:
 	inline void drawPixel(const Vector2& p, int color) { if(p.x < 0) {return;} if(p.x > width- 2) {return;} if(p.y < 0) {return;} if(p.y > height- 2) {return;} drawPixel(p.x, p.y,color);   drawPixel(p.x + 1, p.y,color);  drawPixel(p.x, p.y + 1,color);  drawPixel(p.x + 1, p.y + 1,color); }
 	char drawLine2D(int x1, int y1, int x2, int y2, int color);
 	char drawLine2D(Vector2 a, Vector2 b, int color);
+	char drawBezier(Vector2 a, Vector2 b, Vector2 c, int color);
 	char drawRectangle(const Rect& rect, int color);
 	Rect getBox(Rect& rbox, Shapes::Polygon& polygon, int imageOffset);
 private:

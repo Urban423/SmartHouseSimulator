@@ -36,15 +36,22 @@ uniform sampler2D _MainTex;
 uniform vec4 diff_color;
 uniform float time;
 
+float median(float a, float b, float c)
+{
+    return min(min(a, b), min(min(a, b), c));
+}
+
  // main procedure, the original name was frag
 void main()
 {
-    float edge = 0.3f;
-    float smooth = 0.01f;
+    vec2 uv = floor(TEX0.xy * textureSize(_MainTex,0)) / textureSize(_MainTex,0);
+    float edge = 0.55f;
 
-    vec4 _color = texture2D(_MainTex, TEX0.xy);
-    float dist = _color.r;
-    float alpha = smoothstep(edge - smooth, edge + smooth, dist);
+    vec4 msdf = texture2D(_MainTex, TEX0.xy);
+    float dist = msdf.r;
+    float md = median(msdf.r, msdf.g, msdf.b);
+    float sd = md - edge;
+    float alpha = clamp(sd / fwidth(md) + edge, 0.0, 1.0);
     gl_FragColor = vec4(diff_color.rgb, alpha);
     return;
 } // main end

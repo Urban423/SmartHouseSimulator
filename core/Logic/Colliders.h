@@ -18,6 +18,7 @@ struct AABB {
 struct RayHit;
 struct Collider : public Component {
     ColliderType type;
+    char mask = 0;
 };
 
 
@@ -161,13 +162,12 @@ inline AABB calculateAABB(SphereCollider& collider) {
 
 inline bool calculateRayHit(Vector3 origin, Vector3 direction, float distance, RayHit& hit, SphereCollider& collider) {
     Vector3 c = collider.object.transform.position + collider.offset;
-    float r = collider.radius;
+    float r = collider.radius * collider.object.transform.scale.y;
     Vector3 oc = origin - c;
     float a = Vector3::Dot(direction, direction);
     float b = 2.0f * Vector3::Dot(oc, direction);
     float c2 = Vector3::Dot(oc, oc) - r * r;
     float discriminant = b * b - 4 * a * c2;
-    printf("chechiking\n");
     if (discriminant < 0.0f) return false;
     float sqrtD = sqrt(discriminant);
     float t1 = (-b - sqrtD) / (2.0f * a);
@@ -348,6 +348,14 @@ inline bool calculateRayHit(Vector3 origin, Vector3 direction, float distance, R
 
 
 
+
+
+
+
+
+
+
+
 inline AABB calculateAABB(CapsuleCollider& collider) {
     Vector3 points[2];
     collider.getEdge(points[0], points[1]);
@@ -401,8 +409,104 @@ inline Vector3 getInverseInertia(float mass, CapsuleCollider& collider)
 }
 
 inline bool calculateRayHit(Vector3 origin, Vector3 direction, float distance, RayHit& hit, CapsuleCollider& collider) {
-    return false;
+    Vector3 center = collider.object.transform.position + collider.offset;
+
+    float radius = collider.radius * collider.object.transform.scale.x;
+    float height = collider.height * collider.object.transform.scale.y;
+
+    // Endpoints of the capsule's center line
+    float halfLine = std::max(0.0f, height * 0.5f - radius);
+
+    Vector3 a = center + Vector3(0, -halfLine, 0);
+    Vector3 b = center + Vector3(0,  halfLine, 0);
+
+    Vector3 ba = b - a;
+    Vector3 oa = origin - a;
+
+    float baba = Vector3::Dot(ba, ba);
+    float bard = Vector3::Dot(ba, direction);
+    float baoa = Vector3::Dot(ba, oa);
+    float rdoa = Vector3::Dot(direction, oa);
+    float oaoa = Vector3::Dot(oa, oa);
+
+    float A = baba - bard * bard;
+    float B = baba * rdoa - baoa * bard;
+    float C = baba * oaoa - baoa * baoa - radius * radius * baba;
+
+    float t = FLT_MAX;
+    bool found = false;
+
+    // -------- Cylinder --------
+    float h = B * B - A * C;
+    if (h >= 0.0f && fabs(A) > 1e-6f)
+    {
+        float s = (-B - sqrtf(h)) / A;
+        float y = baoa + s * bard;
+
+        if (y > 0.0f && y < baba && s >= 0.0f && s <= distance)
+        {
+            t = s;
+            found = true;
+        }
+    }
+
+    // -------- Sphere Caps --------
+    auto testSphere = [&](const Vector3& centerPoint)
+    {
+        Vector3 oc = origin - centerPoint;
+
+        float a2 = Vector3::Dot(direction, direction);
+        float b2 = 2.0f * Vector3::Dot(oc, direction);
+        float c2 = Vector3::Dot(oc, oc) - radius * radius;
+
+        float disc = b2 * b2 - 4.0f * a2 * c2;
+        if (disc < 0.0f)
+            return;
+
+        float sd = sqrtf(disc);
+
+        float t0 = (-b2 - sd) / (2.0f * a2);
+        float t1 = (-b2 + sd) / (2.0f * a2);
+
+        float hitT = (t0 >= 0.0f) ? t0 : t1;
+
+        if (hitT >= 0.0f && hitT <= distance && hitT < t)
+        {
+            t = hitT;
+            found = true;
+        }
+    };
+
+    testSphere(a);
+    testSphere(b);
+
+    if (!found)
+        return false;
+
+    hit.distance = t;
+    hit.point = origin + direction * t;
+
+    Vector3 pa = hit.point - a;
+    float proj = Vector3::Dot(pa, ba) / baba;
+    proj = std::clamp(proj, 0.0f, 1.0f);
+
+    Vector3 closest = a + ba * proj;
+
+    hit.normal = (hit.point - closest).normalized();
+    hit.collider = &collider;
+
+    return true;
 }
+
+
+
+
+
+
+
+
+
+
 
 
 inline AABB calculateAABB(Collider& collider) {
@@ -424,7 +528,8 @@ inline AABB calculateAABB(Collider& collider) {
     }
 }
 
-inline bool calculateRayHit(Vector3 origin, Vector3 direction, float distance, RayHit& rayHit, Collider& collider) {
+inline bool calculateRayHit(Vector3 origin, Vector3 direction, float distance, RayHit& rayHit, Collider& collider, char mask) {
+    if(collider.mask != mask) return false;
     switch (collider.type) {
         case ColliderType::Sphere:
             return calculateRayHit(origin, direction, distance, rayHit, static_cast<SphereCollider&>(collider));

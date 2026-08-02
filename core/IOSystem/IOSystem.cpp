@@ -21,6 +21,7 @@
 
 void IOSystem::create() {
     platform->getSupportedResolutions(supportedResolutions);
+    platform->init();
     supportedResolutions.erase(
         std::remove_if(
             supportedResolutions.begin(),

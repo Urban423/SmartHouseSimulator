@@ -67,7 +67,7 @@ public:
 	template<typename A, typename B>
     void solveAdapter(Collider* a, Collider* b);
 
-	bool calculateRayCast(Vector3 origin, Vector3 direction, float distance, RayHit& rayHit);
+	bool calculateRayCast(Vector3 origin, Vector3 direction, float distance, RayHit& rayHit, char mask);
 	void simulatePhysicStep();
 	void calculatePhysic();
 	void solve(Collider* a, Collider* b);
@@ -99,8 +99,8 @@ public:
 		static PhysicSystem instance;
 		return &instance;
 	}
-	inline static bool RayCast(Vector3 origin, Vector3 direction, float distance, RayHit& rayHit) {
-		return getInstance()->calculateRayCast(origin, direction, distance, rayHit);
+	inline static bool RayCast(Vector3 origin, Vector3 direction, float distance, RayHit& rayHit, char mask) {
+		return getInstance()->calculateRayCast(origin, direction, distance, rayHit, mask);
 	}
 private:
 	std::vector<AABB> aabb;

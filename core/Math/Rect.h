@@ -8,6 +8,7 @@ public:
 	Rect() {};
 	Rect(float width, float height): right(width), bottom(height) { }
 	Rect(float left, float top, float right, float bottom): right(right), bottom(bottom), left(left), top(top) { }
+	Rect(int left, int top, int right, int bottom): right(right), bottom(bottom), left(left), top(top) { }
 	Rect(const Rect& rect): right(rect.right), bottom(rect.bottom), left(rect.left), top(rect.top) { }
 	//~Rect();
 	

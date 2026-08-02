@@ -10,7 +10,6 @@
 #include "HouseGenerator.h"
 #include "ClientServerSystem.h"
 #include "Settings.h"
-#include "Image.h"
 
 void createMainSimulation() {
 	Object cube = ECS::createObject();
@@ -38,9 +37,10 @@ void createMainSimulation() {
 
 	OverlayManager::Create();
 	Object player = PrefabSystem::getInstance().createPlayer(true);
+	player.GetComponent<CameraControlSystem>().obj = cube;
 	Object mainCamera = player.getChild(0);
 
-	Object terrain = PrefabSystem::getInstance().createTerrain();
+	Object terrain = PrefabSystem::getInstance().createTerrain(0);
 	terrain.transform.scale = 4;
 	terrain.transform.scale.y = 1;
 	terrain.transform.position -= Vector3(50, 0, 50);
@@ -55,7 +55,7 @@ void createMainSimulation() {
 
 	short botMat = MaterialManager::CreateMaterial(Material(SHADER_standartShader, TEX_Ghost1, 0, 0xff));
 	short maskMat = MaterialManager::CreateMaterial(Material(SHADER_standartShader, TEX_Ghost, 0, 0xff));
-	for (int i = 0; i < 3; i++) {
+	for (int i = 0; i < -3; i++) {
 		Object Bot = ECS::createObject();
 		Bot.transform.scale = 1;
 		Bot.AddComponent<RenderView>().mesh_index = MESH_Cube;
@@ -72,26 +72,19 @@ void createMainSimulation() {
 	}
 
 
-	// Object generatable = ECS::createObject();
 	// generatable.AddComponent<HouseGenerator>();
-	// // generatable.AddComponent<RenderView>(1).mesh_index = generatedMesh.id;
-	// // generatable.GetComponent<RenderView>().shader_indexes[0] = 3;
-	int ImageWidth = 1024;
-	int ImageHeight = 1024;
-	Image image(ImageWidth, ImageHeight);
-	int nw = 1;
-	int nh = 1;
-	Layer *layers = new Layer[nw * nh];
-	int layerWidth = ImageWidth / nw;
-	int layerHeight = ImageHeight / nh;
-	for (int i = 0; i < nw * nh; i++)
-	{
-		layers[i].init(layerWidth * (i % nw), layerHeight * (i / nw), layerWidth, layerHeight);
-		srand(i);
-		// generatable.GetComponent<HouseGenerator>().GenerateHouse(layers[i]);
-		image.addLayer(&layers[i]);
-	}
-	// generatable.AddComponent<RenderView>().materals[0] = MaterialManager::CreateMaterial(Material(0, image.convertToTexture(), 0, 0xff));
+	// generatable.GetComponent<HouseGenerator>().GenerateHouse(layers[i]);
+	Object generatable = ECS::createObject();
+	generatable.transform.position = {0, 2, 0};
+	generatable.transform.scale = 3;
+	generatable.AddComponent<RenderView>().mesh_index = MESH_Cube;
+	generatable.GetComponent<RenderView>().materals[0] = MaterialManager::CreateMaterial(Material(SHADER_textShader, TEX_Atlas, 0, 0xff));
+
+	generatable = ECS::createObject();
+	generatable.transform.position = {3, 2, 0};
+	generatable.transform.scale = 3;
+	generatable.AddComponent<RenderView>().mesh_index = MESH_Cube;
+	generatable.GetComponent<RenderView>().materals[0] = MaterialManager::CreateMaterial(Material(SHADER_standartShader, TEX_Atlas, 0, 0xff));
 }
 
 

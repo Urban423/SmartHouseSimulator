@@ -29,7 +29,6 @@ char readCFile(void* value, int value_size, CFile& file)
 
 void seekCFile(CFile& file, int offset, int origin) {
 	switch(origin) {
-
 		case(SEEK_SET): {
 			if(offset < 0)
 			{
